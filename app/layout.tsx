@@ -2,28 +2,28 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ServiceWorker } from '@/components/service-worker';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://convert.vindk.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://concretequantitymixandcostcalculator.vindk.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'FieldConvert - Fast Unit Converter',
-    template: '%s | FieldConvert'
+    default: 'Concrete Quantity, Mix and Cost Calculator | ConcreteMix Pro',
+    template: '%s | ConcreteMix Pro'
   },
-  description: 'A fast, mobile-first unit converter for everyday metric, imperial, field and technical conversions.',
-  applicationName: 'FieldConvert',
+  description: 'A fast offline-ready concrete calculator for quantities, mix ratios, cement bags, materials and job costs.',
+  applicationName: 'ConcreteMix Pro',
   manifest: '/manifest.webmanifest',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'FieldConvert',
-    description: 'Fast mobile-first unit converter.',
+    title: 'ConcreteMix Pro',
+    description: 'Concrete quantity, mix and cost calculator for contractors and owner-builders.',
     url: siteUrl,
-    siteName: 'FieldConvert',
+    siteName: 'ConcreteMix Pro',
     type: 'website'
   },
   appleWebApp: {
     capable: true,
-    title: 'FieldConvert',
+    title: 'ConcreteMix Pro',
     statusBarStyle: 'default'
   }
 };

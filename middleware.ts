@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  if (request.headers.get('host') === 'fieldconvert.vercel.app') {
+  const primaryHost = process.env.PRIMARY_HOST;
+  const host = request.headers.get('host');
+
+  if (primaryHost && host && host.endsWith('.vercel.app')) {
     const url = request.nextUrl.clone();
     url.protocol = 'https';
-    url.host = 'convert.vindk.com';
+    url.host = primaryHost;
     return NextResponse.redirect(url, 308);
   }
 
