@@ -9,18 +9,16 @@ const pageHeight = 842;
 
 export function downloadReportPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createReportPdfBlob(input, result);
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  const fileName = `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`;
+  void savePdf(blob, fileName, 'ConcreteMix Pro estimate');
 }
 
 export async function shareReportPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createReportPdfBlob(input, result);
+  const fileName = `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`;
+
+  if (await shareNativePdf(blob, fileName, 'ConcreteMix Pro estimate')) return;
+
   const file = new File([blob], `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`, { type: 'application/pdf' });
 
   if (navigator.canShare?.({ files: [file] })) {
@@ -33,19 +31,17 @@ export async function shareReportPdf(input: CalculationInput, result: Calculatio
 
 export function downloadOrderPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createOrderPdfBlob(input, result);
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  const fileName = `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`;
+  void savePdf(blob, fileName, 'ConcreteMix Pro order list');
 }
 
 export async function shareOrderPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createOrderPdfBlob(input, result);
-  const file = new File([blob], `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`, { type: 'application/pdf' });
+  const fileName = `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`;
+
+  if (await shareNativePdf(blob, fileName, 'ConcreteMix Pro order list')) return;
+
+  const file = new File([blob], fileName, { type: 'application/pdf' });
 
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ title: 'ConcreteMix Pro order list', files: [file] });
@@ -53,6 +49,64 @@ export async function shareOrderPdf(input: CalculationInput, result: Calculation
   }
 
   downloadOrderPdf(input, result);
+}
+
+async function savePdf(blob: Blob, fileName: string, title: string) {
+  if (await shareNativePdf(blob, fileName, title)) return;
+  downloadWebPdf(blob, fileName);
+}
+
+function downloadWebPdf(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function shareNativePdf(blob: Blob, fileName: string, title: string) {
+  try {
+    const [{ Capacitor }, { Filesystem, Directory }, { Share }] = await Promise.all([
+      import('@capacitor/core'),
+      import('@capacitor/filesystem'),
+      import('@capacitor/share')
+    ]);
+
+    if (!Capacitor.isNativePlatform()) return false;
+
+    const data = await blobToBase64(blob);
+    const saved = await Filesystem.writeFile({
+      path: fileName,
+      data,
+      directory: Directory.Cache,
+      recursive: true
+    });
+
+    await Share.share({
+      title,
+      text: title,
+      url: saved.uri,
+      dialogTitle: 'Save or share PDF'
+    });
+    return true;
+  } catch (error) {
+    console.error('Unable to save or share PDF', error);
+    globalThis.alert?.('The PDF could not be opened for saving or sharing. Please try again.');
+    return true;
+  }
+}
+
+async function blobToBase64(blob: Blob) {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  return dataUrl.split(',')[1] ?? '';
 }
 
 function createReportPdfBlob(input: CalculationInput, result: CalculationResult) {
