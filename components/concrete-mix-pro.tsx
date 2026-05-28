@@ -448,15 +448,15 @@ export function ConcreteMixPro() {
 
   return (
     <main className="min-h-screen bg-[#f4f2ea] text-[#101418] dark:bg-[#121412] dark:text-[#f7f5ed]">
-      <div className="mx-auto grid w-full max-w-7xl gap-4 px-3 pb-24 pt-3 sm:px-5 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-5 lg:pt-5">
-        <header className="sticky top-0 z-20 -mx-3 border-b border-black/10 bg-[#f4f2ea]/95 px-3 py-3 backdrop-blur dark:border-white/10 dark:bg-[#121412]/95 sm:-mx-5 sm:px-5 lg:static lg:col-span-2 lg:mx-0 lg:rounded-lg lg:border lg:px-5">
-          <div className="flex items-center justify-between gap-3">
+      <div className="mx-auto grid w-full max-w-7xl gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-5 lg:pt-5">
+        <header className="sticky top-0 z-20 -mx-2 border-b border-black/10 bg-[#f4f2ea]/95 px-2 py-2 backdrop-blur dark:border-white/10 dark:bg-[#121412]/95 sm:-mx-5 sm:px-5 sm:py-3 lg:static lg:col-span-2 lg:mx-0 lg:rounded-lg lg:border lg:px-5">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#b8562f]">Concrete Quantity, Mix and Cost Calculator</p>
-              <h1 className="mt-1 text-2xl font-black leading-tight sm:text-3xl">ConcreteMix Pro</h1>
+              <p className="text-[10px] font-black uppercase tracking-wide text-[#b8562f] sm:text-xs">Concrete Quantity, Mix and Cost Calculator</p>
+              <h1 className="mt-0.5 text-xl font-black leading-tight sm:mt-1 sm:text-3xl">ConcreteMix Pro</h1>
             </div>
             <button
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
               onClick={() => setSettings((next) => ({ ...next, theme: next.theme === 'dark' ? 'light' : 'dark' }))}
               aria-label="Toggle theme"
             >
@@ -465,10 +465,10 @@ export function ConcreteMixPro() {
           </div>
         </header>
 
-        <div className="space-y-4">
-          <Panel title="Main Calculator" description="Enter the pour size first. Calculations update instantly. Use Settings at the bottom to preset material, cost and global values for the project.">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_90px]">
-              <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2">
+        <div className="space-y-3 sm:space-y-4">
+          <Panel title="Main Calculator" description="Save a project name first, add and save a location, then enter the pour size. Calculations update instantly. Use Settings at the bottom for material, cost and global values.">
+            <div className="grid grid-cols-[minmax(0,1fr)_82px] gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_90px] sm:gap-3">
+              <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_44px] gap-2 sm:col-span-1">
                 {addingProject || savedProjects.length === 0 ? (
                   <Field label="Project Name" value={projectName} onChange={handleProjectNameChange} />
                 ) : (
@@ -485,7 +485,7 @@ export function ConcreteMixPro() {
                 )}
                 <MiniButton label="Add project" onClick={addProject}>Add</MiniButton>
               </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2">
+              <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_44px] gap-2 sm:col-span-1">
                 {addingLocation || projectLocations.length === 0 ? (
                   <Field label="Location in project" value={locationInProject} onChange={handleLocationNameChange} disabled={!selectedProjectId} />
                 ) : (
@@ -682,7 +682,7 @@ export function ConcreteMixPro() {
           </Panel>
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-5">
+        <aside className="space-y-3 sm:space-y-4 lg:sticky lg:top-5">
           <Panel title="Result" emphasis action={<Calculator size={22} />}>
             <div className="rounded-md bg-[#101418] p-4 text-white dark:bg-white dark:text-[#101418]">
               <p className="text-xs font-black uppercase opacity-70">Total actual cost estimate</p>
@@ -777,11 +777,11 @@ function DimensionFields({ shape, setShape, unit, dimensions, setDimensions }: {
       labels={Object.fromEntries(shapes.map((item) => [item.id, item.label]))}
     />
   );
-  if (shape === 'custom') return <div className="mt-3 grid gap-3 sm:grid-cols-2">{shapeSelect}<NumberField label="Volume m3" value={dimensions.customVolume} onChange={(value) => update('customVolume', value)} /></div>;
-  if (shape === 'circle') return <div className="mt-3 grid gap-3 sm:grid-cols-3">{shapeSelect}<NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
-  if (shape === 'column') return <div className="mt-3 grid gap-3 sm:grid-cols-3">{shapeSelect}<NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Height (${unit})`} value={dimensions.height} onChange={(value) => update('height', value)} /></div>;
-  if (shape === 'stair') return <div className="mt-3 grid gap-3 sm:grid-cols-5">{shapeSelect}<NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label="Steps" value={dimensions.steps} onChange={(value) => update('steps', value)} /><NumberField label={`Rise (${unit})`} value={dimensions.rise} onChange={(value) => update('rise', value)} /><NumberField label={`Run (${unit})`} value={dimensions.run} onChange={(value) => update('run', value)} /></div>;
-  return <div className="mt-3 grid gap-3 sm:grid-cols-4">{shapeSelect}<NumberField label={`Length (${unit})`} value={dimensions.length} onChange={(value) => update('length', value)} /><NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
+  if (shape === 'custom') return <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">{shapeSelect}<NumberField label="Volume m3" value={dimensions.customVolume} onChange={(value) => update('customVolume', value)} /></div>;
+  if (shape === 'circle') return <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">{shapeSelect}<NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
+  if (shape === 'column') return <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">{shapeSelect}<NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Height (${unit})`} value={dimensions.height} onChange={(value) => update('height', value)} /></div>;
+  if (shape === 'stair') return <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">{shapeSelect}<NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label="Steps" value={dimensions.steps} onChange={(value) => update('steps', value)} /><NumberField label={`Rise (${unit})`} value={dimensions.rise} onChange={(value) => update('rise', value)} /><NumberField label={`Run (${unit})`} value={dimensions.run} onChange={(value) => update('run', value)} /></div>;
+  return <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">{shapeSelect}<NumberField label={`Length (${unit})`} value={dimensions.length} onChange={(value) => update('length', value)} /><NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
 }
 
 function SettingsEditor({
@@ -958,11 +958,11 @@ function SettingsEditor({
 
 function Panel({ children, title, description, action, emphasis = false }: { children: ReactNode; title: string; description?: string; action?: ReactNode; emphasis?: boolean }) {
   return (
-    <section className={`rounded-lg border p-4 shadow-sm ${emphasis ? 'border-[#1f7a5a] bg-[#e5efe6] dark:bg-[#18261f]' : 'border-black/10 bg-white dark:border-white/10 dark:bg-[#191d1a]'}`}>
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <section className={`rounded-lg border p-3 shadow-sm sm:p-4 ${emphasis ? 'border-[#1f7a5a] bg-[#e5efe6] dark:bg-[#18261f]' : 'border-black/10 bg-white dark:border-white/10 dark:bg-[#191d1a]'}`}>
+      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3">
         <div>
-          <h2 className="text-lg font-black leading-tight">{title}</h2>
-          {description && <p className="mt-1 text-sm font-semibold text-black/55 dark:text-white/60">{description}</p>}
+          <h2 className="text-base font-black leading-tight sm:text-lg">{title}</h2>
+          {description && <p className="mt-1 text-xs font-semibold leading-snug text-black/55 dark:text-white/60 sm:text-sm">{description}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
@@ -973,12 +973,12 @@ function Panel({ children, title, description, action, emphasis = false }: { chi
 
 function SettingsGroup({ title, children, open = true, onToggle }: { title: string; children: ReactNode; open?: boolean; onToggle?: () => void }) {
   return (
-    <div className="rounded-md border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-md border border-black/10 bg-black/[0.03] p-2.5 dark:border-white/10 dark:bg-white/[0.04] sm:p-3">
       <button className="flex min-h-10 w-full items-center justify-between text-left" onClick={onToggle} type="button">
         <h3 className="text-sm font-black uppercase text-[#b8562f]">{title}</h3>
         <span className="text-sm font-black text-black/45 dark:text-white/50">{open ? 'Hide' : 'Show'}</span>
       </button>
-      {open && <div className="mt-3 grid gap-3 sm:grid-cols-2">{children}</div>}
+      {open && <div className="mt-2 grid gap-2 sm:mt-3 sm:gap-3 sm:grid-cols-2">{children}</div>}
     </div>
   );
 }
@@ -998,7 +998,7 @@ function ClearCheck({ label, checked, onChange }: { label: string; checked: bool
 }
 
 function Field({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
-  return <label className={`block text-sm font-bold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<input className={`mt-1 h-12 w-full rounded-md border px-3 text-base font-bold outline-none focus:border-[#1f7a5a] ${disabled ? 'border-black/10 bg-black/[0.04] text-black/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40' : 'border-black/15 bg-white text-[#101418] dark:border-white/15 dark:bg-[#121412] dark:text-white'}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} /></label>;
+  return <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<input className={`mt-1 h-11 w-full rounded-md border px-2.5 text-sm font-bold outline-none focus:border-[#1f7a5a] sm:h-12 sm:px-3 sm:text-base ${disabled ? 'border-black/10 bg-black/[0.04] text-black/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40' : 'border-black/15 bg-white text-[#101418] dark:border-white/15 dark:bg-[#121412] dark:text-white'}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} /></label>;
 }
 
 function NumberField({ label, value, onChange, prefix = '', money = false }: { label: string; value: number; onChange: (value: number) => void; prefix?: string; money?: boolean }) {
@@ -1011,12 +1011,12 @@ function NumberField({ label, value, onChange, prefix = '', money = false }: { l
   }, [focused, money, value]);
 
   return (
-    <label className="block text-sm font-bold text-black/70 dark:text-white/70">
+    <label className="block text-xs font-bold text-black/70 dark:text-white/70 sm:text-sm">
       {label}
-      <span className="mt-1 flex h-12 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412]">
+      <span className="mt-1 flex h-11 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] sm:h-12">
         {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
         <input
-          className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white"
+          className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base"
           inputMode="decimal"
           value={draft}
           onFocus={() => {
@@ -1044,7 +1044,7 @@ function CompactField({ ariaLabel, value, onChange }: { ariaLabel: string; value
   return (
     <input
       aria-label={ariaLabel}
-      className="h-11 w-full rounded-md border border-black/15 bg-white px-3 text-base font-bold text-[#101418] outline-none focus:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] dark:text-white"
+      className="h-11 w-full rounded-md border border-black/15 bg-white px-2.5 text-sm font-bold text-[#101418] outline-none focus:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] dark:text-white sm:px-3 sm:text-base"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -1065,7 +1065,7 @@ function CompactNumberField({ ariaLabel, value, onChange, prefix = '', money = f
       {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
       <input
         aria-label={ariaLabel}
-        className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white"
+        className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base"
         inputMode="decimal"
         value={draft}
         onFocus={() => {
@@ -1089,15 +1089,15 @@ function CompactNumberField({ ariaLabel, value, onChange, prefix = '', money = f
 }
 
 function Select({ label, value, onChange, options, suffix = '', labels = {}, disabled = false }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; suffix?: string; labels?: Record<string, string>; disabled?: boolean }) {
-  return <label className={`block text-sm font-bold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<span className={`mt-1 flex h-12 items-center rounded-md border px-2 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}><select className="w-full bg-transparent text-base font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
+  return <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}><select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
 }
 
 function CementTypeSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
   return (
-    <label className="block text-sm font-bold text-black/70 dark:text-white/70">
+    <label className="block text-xs font-bold text-black/70 dark:text-white/70 sm:text-sm">
       {label}
-      <span className="mt-1 flex h-12 items-center rounded-md border border-black/15 bg-white px-2 dark:border-white/15 dark:bg-[#121412]">
-        <select className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white" value={value} onChange={(event) => onChange(event.target.value)}>
+      <span className="mt-1 flex h-11 items-center rounded-md border border-black/15 bg-white px-2 dark:border-white/15 dark:bg-[#121412] sm:h-12">
+        <select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base" value={value} onChange={(event) => onChange(event.target.value)}>
           {options.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       </span>
@@ -1154,11 +1154,11 @@ function isSavedCustomCement(name: string) {
 }
 
 function Metric({ label, value, unit, sub, strong = false }: { label: string; value: number; unit: string; sub: string; strong?: boolean }) {
-  return <div className="min-w-0 rounded-md border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-[#121412]"><p className="truncate text-xs font-bold uppercase text-black/55 dark:text-white/55">{label}</p><p className={`${strong ? 'text-2xl' : 'text-xl'} truncate font-black leading-tight`}>{value}<span className="ml-1 text-sm">{unit}</span></p><p className="truncate text-xs font-bold text-black/55 dark:text-white/55">{sub}</p></div>;
+  return <div className="min-w-0 rounded-md border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#121412] sm:p-3"><p className="truncate text-[11px] font-bold uppercase text-black/55 dark:text-white/55 sm:text-xs">{label}</p><p className={`${strong ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} truncate font-black leading-tight`}>{value}<span className="ml-1 text-xs sm:text-sm">{unit}</span></p><p className="truncate text-[11px] font-bold text-black/55 dark:text-white/55 sm:text-xs">{sub}</p></div>;
 }
 
 function SummaryPill({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-md bg-black/5 p-2 dark:bg-white/10"><p className="text-xs text-black/55 dark:text-white/60">{label}</p><p className="truncate font-black">{value}</p></div>;
+  return <div className="rounded-md bg-black/5 p-2 dark:bg-white/10"><p className="text-[11px] text-black/55 dark:text-white/60 sm:text-xs">{label}</p><p className="truncate text-sm font-black sm:text-base">{value}</p></div>;
 }
 
 function Badge({ children }: { children: ReactNode }) {
@@ -1166,13 +1166,13 @@ function Badge({ children }: { children: ReactNode }) {
 }
 
 function Action({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
-  return <button className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#1f7a5a] px-3 font-black text-white active:bg-[#2f9f75]" onClick={onClick}>{icon}{label}</button>;
+  return <button className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] sm:min-h-12 sm:text-base" onClick={onClick}>{icon}{label}</button>;
 }
 
 function MiniButton({ children, label, onClick, disabled = false, compact = false }: { children: ReactNode; label: string; onClick: () => void; disabled?: boolean; compact?: boolean }) {
   return (
     <button
-      className={`${compact ? 'h-11' : 'mt-6 h-12'} rounded-md border px-2 text-xs font-black ${disabled ? 'cursor-not-allowed border-black/10 bg-black/[0.04] text-black/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30' : 'border-[#b8562f]/40 bg-[#fff4ea] text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91]'}`}
+      className={`${compact ? 'h-10 sm:h-11' : 'mt-5 h-11 sm:mt-6 sm:h-12'} rounded-md border px-2 text-xs font-black ${disabled ? 'cursor-not-allowed border-black/10 bg-black/[0.04] text-black/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30' : 'border-[#b8562f]/40 bg-[#fff4ea] text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91]'}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}

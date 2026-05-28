@@ -1,8 +1,14 @@
+const isMobileBuild = process.env.BUILD_TARGET === 'capacitor';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  output: 'standalone',
+  output: isMobileBuild ? 'export' : 'standalone',
+  trailingSlash: isMobileBuild,
+  images: {
+    unoptimized: isMobileBuild
+  },
   experimental: {
     optimizePackageImports: ['lucide-react']
   },

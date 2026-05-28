@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "next dev -p 3060",
     "build": "next build",
+    "build:mobile": "node scripts/build-mobile.mjs",
+    "android:add": "node scripts/capacitor.mjs add android",
+    "android:sync": "node scripts/capacitor.mjs sync android",
+    "android:open": "node scripts/capacitor.mjs open android",
     "start": "next start -p 3060",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
@@ -16,6 +20,9 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
