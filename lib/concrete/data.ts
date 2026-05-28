@@ -4,6 +4,7 @@ export const defaultSettings: Settings = {
   theme: 'light',
   defaultUnit: 'm',
   unitSystem: 'metric',
+  strengthUnit: 'MPa',
   bagSize: 50,
   wastagePercent: 5,
   dryVolumeFactor: 1.54,
@@ -13,7 +14,15 @@ export const defaultSettings: Settings = {
   aggregateDensityKgM3: 1500,
   mixerCapacityLiters: 200,
   wheelbarrowCapacityLiters: 65,
-  currencySymbol: '$'
+  currencySymbol: '$',
+  cementTypeNames: {
+    'Type I': 'Type I - General purpose',
+    'Type II': 'Type II - Moderate sulfate resistance',
+    'Type III': 'Type III - High early strength',
+    'Type IV': 'Type IV - Low heat hydration',
+    'Type V': 'Type V - High sulfate resistance',
+    Custom: 'Custom cement'
+  }
 };
 
 export const strengthDatabase: MixDesign[] = [
@@ -79,7 +88,8 @@ export const purposeRecommendations: Record<Purpose, { strengthMpa: number; ceme
   'Reinforced slab': { strengthMpa: 25, cementType: 'Type I' },
   Beam: { strengthMpa: 30, cementType: 'Type III' },
   Column: { strengthMpa: 30, cementType: 'Type III' },
-  'Heavy-duty industrial': { strengthMpa: 30, cementType: 'Type V' }
+  'Heavy-duty industrial': { strengthMpa: 30, cementType: 'Type V' },
+  Custom: { strengthMpa: 20, cementType: 'Type I' }
 };
 
 export const cementDescriptions: Record<CementType, string> = {
@@ -87,7 +97,8 @@ export const cementDescriptions: Record<CementType, string> = {
   'Type II': 'Moderate sulfate resistance',
   'Type III': 'High early strength',
   'Type IV': 'Low heat hydration',
-  'Type V': 'High sulfate resistance'
+  'Type V': 'High sulfate resistance',
+  Custom: 'User-defined cement'
 };
 
 export const purposes = Object.keys(purposeRecommendations) as Purpose[];

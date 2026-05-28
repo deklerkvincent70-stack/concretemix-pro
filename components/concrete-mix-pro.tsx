@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Calculator, Moon, Printer, Save, Settings as SettingsIcon, Share2, Sun } from 'lucide-react';
+import { AlertTriangle, Calculator, Moon, Save, Share2, Sun } from 'lucide-react';
 import { cementDescriptions, defaultSettings, purposes, strengthDatabase } from '@/lib/concrete/data';
 import { calculateConcrete, formatRatio, getMixByStrength, recommendedForPurpose } from '@/lib/concrete/engine';
-import { printReport } from '@/lib/concrete/pdf';
-import { defaultCosts, loadCosts, loadHistory, loadSettings, saveCalculation, saveCosts, saveSettings } from '@/lib/concrete/storage';
-import type { BagSize, CalculationInput, CementType, Costs, Dimensions, LengthUnit, Purpose, SavedCalculation, Settings, Shape } from '@/lib/concrete/types';
+import { downloadOrderPdf, downloadReportPdf, shareOrderPdf, shareReportPdf } from '@/lib/concrete/pdf';
+import { clearAllConcreteData, clearCustomMixes, clearHistory, clearProjects, defaultCosts, loadCosts, loadCustomMixes, loadHistory, loadProjects, loadSettings, saveCalculation, saveCosts, saveCustomMix, saveProject, saveSettings } from '@/lib/concrete/storage';
+import type { AdditiveUnit, BagSize, CalculationInput, CementType, Costs, CustomMixPreset, Dimensions, LengthUnit, Purpose, SavedCalculation, SavedProject, Settings, Shape } from '@/lib/concrete/types';
 import { kgToPounds, round } from '@/lib/concrete/units';
 
 const shapes: { id: Shape; label: string }[] = [
@@ -20,33 +20,91 @@ const shapes: { id: Shape; label: string }[] = [
 ];
 
 const units: LengthUnit[] = ['mm', 'cm', 'm', 'in', 'ft'];
-const cementTypes: CementType[] = ['Type I', 'Type II', 'Type III', 'Type IV', 'Type V'];
+const cementTypes: CementType[] = ['Type I', 'Type II', 'Type III', 'Type IV', 'Type V', 'Custom'];
+const baseCementTypes = cementTypes.filter((type) => type !== 'Custom');
+const additiveUnits: AdditiveUnit[] = ['L', 'ml', 'gal', 'fl oz'];
 const emptyDimensions: Dimensions = { length: 0, width: 0, depth: 0, diameter: 0, height: 0, steps: 0, rise: 0, run: 0, customVolume: 0 };
+const PSI_PER_MPA = 145.0377377;
+const LITERS_PER_GALLON = 3.785411784;
+const LITERS_PER_FLUID_OUNCE = 0.0295735296;
+
+interface ClearDataOptions {
+  projects: boolean;
+  currentLocation: boolean;
+  calculations: boolean;
+  customMixes: boolean;
+  cementTypes: boolean;
+  costs: boolean;
+  global: boolean;
+}
 
 export function ConcreteMixPro() {
   const [hydrated, setHydrated] = useState(false);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [costs, setCosts] = useState<Costs>(defaultCosts);
   const [history, setHistory] = useState<SavedCalculation[]>([]);
+  const [customMixes, setCustomMixes] = useState<CustomMixPreset[]>([]);
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedLocationId, setSelectedLocationId] = useState('');
+  const [addingProject, setAddingProject] = useState(false);
+  const [addingLocation, setAddingLocation] = useState(false);
+  const [savedInputSnapshot, setSavedInputSnapshot] = useState('');
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
   const [shape, setShape] = useState<Shape>('rectangle');
   const [unit, setUnit] = useState<LengthUnit>('m');
+  const [purposeChoice, setPurposeChoice] = useState('Domestic slab');
   const [purpose, setPurpose] = useState<Purpose>('Domestic slab');
+  const [customPurposeName, setCustomPurposeName] = useState('Custom concrete');
   const [projectName, setProjectName] = useState('Site pour');
+  const [locationInProject, setLocationInProject] = useState('');
   const [notes, setNotes] = useState('');
   const [dimensions, setDimensions] = useState<Dimensions>(emptyDimensions);
   const [strengthMpa, setStrengthMpa] = useState(20);
   const [cementType, setCementType] = useState<CementType>('Type I');
+  const [cementChoice, setCementChoice] = useState('Type I');
+  const [customCementName, setCustomCementName] = useState('Custom cement');
   const [manualMix, setManualMix] = useState(false);
   const [manualRatio, setManualRatio] = useState<[number, number, number]>([1, 1.5, 3]);
   const [openSettings, setOpenSettings] = useState(false);
-  const [openCosts, setOpenCosts] = useState(true);
 
   useEffect(() => {
     const storedSettings = loadSettings();
+    const storedCosts = loadCosts();
     setSettings(storedSettings);
     setUnit(storedSettings.defaultUnit);
-    setCosts(loadCosts());
+    setCosts(storedCosts);
     setHistory(loadHistory());
+    setCustomMixes(loadCustomMixes());
+    const projects = loadProjects();
+    setSavedProjects(projects);
+    const latestProject = projects[0];
+    const latestLocation = latestProject?.locations[0];
+    if (latestProject && latestLocation) {
+      const nextInput = latestLocation.input;
+      setSelectedProjectId(latestProject.id);
+      setSelectedLocationId(latestLocation.id);
+      setAddingProject(false);
+      setAddingLocation(false);
+      setSavedInputSnapshot(JSON.stringify(nextInput));
+      setProjectName(nextInput.projectName || latestProject.name);
+      setLocationInProject(nextInput.locationInProject || latestLocation.name);
+      setNotes(nextInput.notes);
+      setShape(nextInput.shape);
+      setUnit(nextInput.unit);
+      setPurpose(nextInput.purpose);
+      setPurposeChoice(nextInput.purpose);
+      setCementType(nextInput.cementType);
+      setCustomCementName(nextInput.customCementName || storedSettings.cementTypeNames[nextInput.cementType]);
+      setCementChoice(nextInput.customCementName || storedSettings.cementTypeNames[nextInput.cementType]);
+      setStrengthMpa(nextInput.strengthMpa);
+      if (nextInput.ratio) setManualRatio(nextInput.ratio);
+      setManualMix(Boolean(nextInput.ratio));
+      setDimensions(nextInput.dimensions);
+      setSettings(nextInput.settings);
+      setCosts(nextInput.costs);
+    }
     setHydrated(true);
   }, []);
 
@@ -61,7 +119,7 @@ export function ConcreteMixPro() {
   }, [costs, hydrated]);
 
   useEffect(() => {
-    if (manualMix) return;
+    if (manualMix || purpose === 'Custom') return;
     const recommendation = recommendedForPurpose(purpose);
     setStrengthMpa(recommendation.strengthMpa);
     setCementType(recommendation.cementType);
@@ -71,23 +129,321 @@ export function ConcreteMixPro() {
   const selectedMix = getMixByStrength(strengthMpa);
   const ratio = manualMix ? manualRatio : selectedMix.ratio;
   const currency = settings.currencySymbol || '$';
+  const isCustomMix = purpose === 'Custom';
+  const approximateCustomStrength = isCustomMix ? estimateStrengthFromRatio(manualRatio) : null;
+  const strengthSelectValue = isCustomMix ? 'Custom' : settings.strengthUnit === 'PSI' ? String(selectedMix.strengthPsi) : String(strengthMpa);
+  const strengthOptions = useMemo(
+    () => [...strengthDatabase.map((mix) => String(settings.strengthUnit === 'PSI' ? mix.strengthPsi : mix.strengthMpa)), 'Custom'],
+    [settings.strengthUnit]
+  );
+  const purposeOptions = useMemo(() => [...purposes, ...customMixes.map((mix) => mix.name)], [customMixes]);
+  const savedCustomCements = useMemo(() => costs.customCements.filter((cement) => isSavedCustomCement(cement.name)), [costs.customCements]);
+  const cementOptions = useMemo(() => [...baseCementTypes.map((type) => settings.cementTypeNames[type]), ...savedCustomCements.map((cement) => cement.name)], [savedCustomCements, settings.cementTypeNames]);
+  const selectedProject = useMemo(() => savedProjects.find((project) => project.id === selectedProjectId), [savedProjects, selectedProjectId]);
+  const projectLocations = selectedProject?.locations ?? [];
 
   const input: CalculationInput = useMemo(
-    () => ({ projectName, notes, shape, unit, purpose, cementType, strengthMpa, ratio, dimensions, settings, costs }),
-    [projectName, notes, shape, unit, purpose, cementType, strengthMpa, ratio, dimensions, settings, costs]
+    () => ({ projectName, locationInProject, notes, shape, unit, purpose, cementType, customCementName, strengthMpa, ratio, dimensions, settings, costs }),
+    [projectName, locationInProject, notes, shape, unit, purpose, cementType, customCementName, strengthMpa, ratio, dimensions, settings, costs]
   );
   const result = useMemo(() => calculateConcrete(input), [input]);
+  const inputSnapshot = useMemo(() => JSON.stringify(input), [input]);
+  const hasUnsavedProjectChanges = Boolean(selectedProjectId && savedInputSnapshot && savedInputSnapshot !== inputSnapshot);
+  const waterDisplay = formatLiquid(result.materials.waterLiters, settings.unitSystem);
+  const additiveDisplay = formatLiquid(result.materials.additiveLiters, settings.unitSystem);
 
   function saveCurrent() {
     const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const saved = saveCalculation({ id, createdAt: new Date().toISOString(), input, result });
     setHistory(saved);
+    downloadReportPdf(input, result);
+  }
+
+  function saveCustomCurrent() {
+    const name = customPurposeName.trim();
+    if (!name) return;
+    const saved = saveCustomMix({
+      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name,
+      strengthMpa,
+      cementType,
+      customCementName,
+      ratio: manualRatio,
+      updatedAt: new Date().toISOString()
+    });
+    setCustomMixes(saved);
+    setPurposeChoice(name);
+  }
+
+  function loadInput(nextInput: CalculationInput) {
+    setSettings(nextInput.settings);
+    setCosts(nextInput.costs);
+    setProjectName(nextInput.projectName);
+    setLocationInProject(nextInput.locationInProject || '');
+    setNotes(nextInput.notes);
+    setShape(nextInput.shape);
+    setUnit(nextInput.unit);
+    setPurpose(nextInput.purpose);
+    setPurposeChoice(nextInput.purpose);
+    setCementType(nextInput.cementType);
+    setCustomCementName(nextInput.customCementName || settings.cementTypeNames[nextInput.cementType]);
+    setCementChoice(nextInput.customCementName || settings.cementTypeNames[nextInput.cementType]);
+    setStrengthMpa(nextInput.strengthMpa);
+    if (nextInput.ratio) setManualRatio(nextInput.ratio);
+    setManualMix(Boolean(nextInput.ratio));
+    setDimensions(nextInput.dimensions);
+  }
+
+  function loadSavedInput(project: SavedProject, location = project.locations[0]) {
+    setSelectedProjectId(project.id);
+    setAddingProject(false);
+    setProjectName(project.name);
+    if (!location) {
+      setSelectedLocationId('');
+      setAddingLocation(true);
+      setLocationInProject('');
+      setNotes('');
+      setDimensions(emptyDimensions);
+      setSavedInputSnapshot('');
+      return;
+    }
+    setSelectedLocationId(location.id);
+    setAddingLocation(false);
+    loadInput(location.input);
+    setSavedInputSnapshot(JSON.stringify(location.input));
+  }
+
+  function startNewProject() {
+    setSelectedProjectId('');
+    setSelectedLocationId('');
+    setAddingProject(true);
+    setAddingLocation(false);
+    setSavedInputSnapshot('');
+    setProjectName('');
+    setLocationInProject('');
+    setNotes('');
+    setDimensions(emptyDimensions);
+  }
+
+  function addProject() {
+    if (projectName.trim()) saveProjectCurrent();
+    startNewProject();
+  }
+
+  function startNewLocation() {
+    if (!selectedProject) return;
+    setSelectedLocationId('');
+    setAddingLocation(true);
+    setSavedInputSnapshot('');
+    setLocationInProject('');
+    setNotes('');
+    setDimensions(emptyDimensions);
+  }
+
+  function addLocation() {
+    if (!selectedProject) return;
+    if (selectedLocationId || locationInProject.trim()) saveProjectCurrent();
+    startNewLocation();
+  }
+
+  function runWithUnsavedCheck(action: () => void) {
+    if (!hasUnsavedProjectChanges) {
+      action();
+      return;
+    }
+    setPendingAction(() => action);
+    setShowUnsavedPrompt(true);
+  }
+
+  function saveProjectCurrent() {
+    const name = projectName.trim() || 'Concrete project';
+    const locationName = locationInProject.trim();
+    saveSettings(settings);
+    saveCosts(costs);
+    const existingByName = savedProjects.find((project) => project.name.toLowerCase() === name.toLowerCase());
+    const project = selectedProject ?? existingByName;
+    const projectId = project?.id || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    if (!locationName) {
+      const savedProject = {
+        id: projectId,
+        name,
+        locations: project?.locations ?? [],
+        updatedAt: new Date().toISOString()
+      };
+      const saved = saveProject(savedProject);
+      setSavedProjects(saved);
+      setSelectedProjectId(projectId);
+      setSelectedLocationId('');
+      setAddingProject(false);
+      setAddingLocation(true);
+      setProjectName(name);
+      setSavedInputSnapshot('');
+      return;
+    }
+    const existingLocation = project?.locations.find((location) => location.id === selectedLocationId || location.name.toLowerCase() === locationName.toLowerCase());
+    const locationId = existingLocation?.id || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const savedInput = { ...input, projectName: name, locationInProject: locationName };
+    const location = {
+      id: locationId,
+      name: locationName,
+      input: savedInput,
+      updatedAt: new Date().toISOString()
+    };
+    const savedProject = {
+      id: projectId,
+      name,
+      locations: [location, ...(project?.locations ?? []).filter((item) => item.id !== locationId && item.name.toLowerCase() !== locationName.toLowerCase())],
+      updatedAt: new Date().toISOString()
+    };
+    const saved = saveProject(savedProject);
+    setSavedProjects(saved);
+    setSelectedProjectId(projectId);
+    setSelectedLocationId(locationId);
+    setAddingProject(false);
+    setAddingLocation(false);
+    setProjectName(name);
+    setLocationInProject(locationName);
+    setSavedInputSnapshot(JSON.stringify(savedInput));
+  }
+
+  function handleProjectNameChange(value: string) {
+    setProjectName(value);
+    setSelectedProjectId('');
+    setSelectedLocationId('');
+    setSavedInputSnapshot('');
+  }
+
+  function handleLocationNameChange(value: string) {
+    setLocationInProject(value);
+    setSelectedLocationId('');
+    setSavedInputSnapshot('');
+  }
+
+  function deleteSelectedLocation(confirmDelete = true) {
+    if (!selectedProject || !selectedLocationId) return;
+    const location = selectedProject.locations.find((item) => item.id === selectedLocationId);
+    if (!location) return;
+    const confirmed = !confirmDelete || window.confirm(`Delete location "${location.name}" from project "${selectedProject.name}"?`);
+    if (!confirmed) return;
+    const nextProject = {
+      ...selectedProject,
+      locations: selectedProject.locations.filter((item) => item.id !== selectedLocationId),
+      updatedAt: new Date().toISOString()
+    };
+    const nextProjects = saveProject(nextProject);
+    setSavedProjects(nextProjects);
+    setSelectedLocationId('');
+    setAddingLocation(true);
+    setSavedInputSnapshot('');
+    setLocationInProject('');
+    setNotes('');
+    setDimensions(emptyDimensions);
+  }
+
+  function clearCurrentLocation() {
+    if (!selectedProject || !selectedLocationId) {
+      window.alert('Select a saved project location first.');
+      return;
+    }
+    deleteSelectedLocation(false);
+  }
+
+  function confirmSaveBeforeAction() {
+    saveProjectCurrent();
+    setShowUnsavedPrompt(false);
+    pendingAction?.();
+    setPendingAction(null);
+  }
+
+  function discardBeforeAction() {
+    setShowUnsavedPrompt(false);
+    pendingAction?.();
+    setPendingAction(null);
+  }
+
+  function cancelPendingAction() {
+    setShowUnsavedPrompt(false);
+    setPendingAction(null);
+  }
+
+  function clearSelectedData(options: ClearDataOptions) {
+    const labels = [
+      options.projects && 'saved projects',
+      options.currentLocation && 'current location in project',
+      options.calculations && 'saved calculations',
+      options.customMixes && 'custom mixes',
+      options.cementTypes && 'cement types',
+      options.costs && 'costs',
+      options.global && 'global settings'
+    ].filter(Boolean);
+    if (labels.length === 0) return;
+    const confirmed = window.confirm(`Delete selected data from this device?\n\n${labels.join(', ')}`);
+    if (!confirmed) return;
+    if (options.projects && options.calculations && options.customMixes && options.cementTypes && options.costs && options.global) {
+      clearAllConcreteData();
+    }
+
+    if (options.currentLocation && !options.projects) clearCurrentLocation();
+    if (options.projects) {
+      clearProjects();
+      setSavedProjects([]);
+      setSelectedProjectId('');
+      setSelectedLocationId('');
+      setAddingProject(true);
+      setAddingLocation(false);
+      setSavedInputSnapshot('');
+      setProjectName('Site pour');
+      setLocationInProject('');
+      setNotes('');
+      setDimensions(emptyDimensions);
+    }
+    if (options.calculations) {
+      clearHistory();
+      setHistory([]);
+    }
+    if (options.customMixes) {
+      clearCustomMixes();
+      setCustomMixes([]);
+      setPurposeChoice('Domestic slab');
+      setPurpose('Domestic slab');
+      setCustomPurposeName('Custom concrete');
+      setManualMix(false);
+    }
+    if (options.cementTypes) {
+      setSettings((next) => ({ ...next, cementTypeNames: { ...next.cementTypeNames, Custom: defaultSettings.cementTypeNames.Custom } }));
+      setCosts((next) => ({
+        ...next,
+        customCements: [],
+        cementPerBagByType: { ...next.cementPerBagByType, Custom: defaultCosts.cementPerBagByType.Custom }
+      }));
+      setCementType('Type I');
+      setCementChoice(settings.cementTypeNames['Type I']);
+      setCustomCementName(defaultSettings.cementTypeNames.Custom);
+    }
+    if (options.costs) setCosts(defaultCosts);
+    if (options.global) {
+      setSettings((next) => ({
+        ...next,
+        theme: defaultSettings.theme,
+        defaultUnit: defaultSettings.defaultUnit,
+        unitSystem: defaultSettings.unitSystem,
+        strengthUnit: defaultSettings.strengthUnit,
+        currencySymbol: defaultSettings.currencySymbol
+      }));
+      setUnit(defaultSettings.defaultUnit);
+    }
   }
 
   async function shareResult() {
-    const text = `${projectName}: ${round(result.wetVolumeM3, 3)} m3, ${round(result.materials.cementBags, 1)} bags, ${currency}${round(result.costs.total, 2)} total.`;
-    if (navigator.share) await navigator.share({ title: 'ConcreteMix Pro estimate', text });
-    else await navigator.clipboard?.writeText(text);
+    await shareReportPdf(input, result);
+  }
+
+  function saveOrderList() {
+    downloadOrderPdf(input, result);
+  }
+
+  async function shareOrderList() {
+    await shareOrderPdf(input, result);
   }
 
   return (
@@ -110,41 +466,159 @@ export function ConcreteMixPro() {
         </header>
 
         <div className="space-y-4">
-          <Panel title="Main Calculator" description="Enter the pour size first. Calculations update instantly.">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-              <Field label="Project" value={projectName} onChange={setProjectName} />
+          <Panel title="Main Calculator" description="Enter the pour size first. Calculations update instantly. Use Settings at the bottom to preset material, cost and global values for the project.">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_90px]">
+              <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2">
+                {addingProject || savedProjects.length === 0 ? (
+                  <Field label="Project Name" value={projectName} onChange={handleProjectNameChange} />
+                ) : (
+                  <Select
+                    label="Project Name"
+                    value={selectedProjectId}
+                    onChange={(value) => {
+                      const project = savedProjects.find((item) => item.id === value);
+                      if (project) runWithUnsavedCheck(() => loadSavedInput(project));
+                    }}
+                    options={savedProjects.map((project) => project.id)}
+                    labels={Object.fromEntries(savedProjects.map((project) => [project.id, project.name]))}
+                  />
+                )}
+                <MiniButton label="Add project" onClick={addProject}>Add</MiniButton>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_44px] gap-2">
+                {addingLocation || projectLocations.length === 0 ? (
+                  <Field label="Location in project" value={locationInProject} onChange={handleLocationNameChange} disabled={!selectedProjectId} />
+                ) : (
+                  <Select
+                    label="Location in project"
+                    value={selectedLocationId}
+                    onChange={(value) => {
+                      const location = projectLocations.find((item) => item.id === value);
+                      if (selectedProject && location) runWithUnsavedCheck(() => loadSavedInput(selectedProject, location));
+                    }}
+                    options={projectLocations.map((location) => location.id)}
+                    labels={Object.fromEntries(projectLocations.map((location) => [location.id, location.name]))}
+                    disabled={!selectedProjectId}
+                  />
+                )}
+                <MiniButton label="Add location" onClick={addLocation} disabled={!selectedProjectId}>Add</MiniButton>
+              </div>
               <Select label="Unit" value={unit} onChange={(value) => setUnit(value as LengthUnit)} options={units} />
+              <MiniButton label="Save project or location" onClick={saveProjectCurrent}>Save</MiniButton>
             </div>
-            <div className="mt-4">
-              <Segmented label="Shape" value={shape} onChange={(value) => setShape(value as Shape)} options={shapes} />
+            <DimensionFields shape={shape} setShape={setShape} unit={unit} dimensions={dimensions} setDimensions={setDimensions} />
+            <div className="mt-3">
+              <Field label="Notes" value={notes} onChange={setNotes} />
             </div>
-            <DimensionFields shape={shape} unit={unit} dimensions={dimensions} setDimensions={setDimensions} />
           </Panel>
 
           <Panel title="Mix Recommendation" description="Choose the concrete purpose, then adjust strength or ratio if needed.">
-            <Select label="Purpose of Concrete" value={purpose} onChange={(value) => setPurpose(value as Purpose)} options={purposes} />
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.6fr)_160px]">
               <Select
-                label="Strength MPa"
-                value={String(strengthMpa)}
+                label="Purpose of Concrete"
+                value={purposeChoice}
                 onChange={(value) => {
-                  const nextStrength = Number(value);
+                  const savedMix = customMixes.find((mix) => mix.name === value);
+                  if (savedMix) {
+                    setPurposeChoice(savedMix.name);
+                    setPurpose('Custom');
+                    setCustomPurposeName(savedMix.name);
+                    setStrengthMpa(savedMix.strengthMpa);
+                    setCementType(savedMix.cementType);
+                    setCustomCementName(savedMix.customCementName || settings.cementTypeNames[savedMix.cementType]);
+                    setCementChoice(savedMix.customCementName || settings.cementTypeNames[savedMix.cementType]);
+                    setManualRatio(savedMix.ratio);
+                    setManualMix(true);
+                    return;
+                  }
+                  const nextPurpose = value as Purpose;
+                  setPurposeChoice(value);
+                  setPurpose(nextPurpose);
+                  if (nextPurpose === 'Custom') {
+                    setManualMix(true);
+                    return;
+                  }
+                  setManualMix(false);
+                }}
+                options={purposeOptions}
+              />
+              <Select
+                label={`Strength ${settings.strengthUnit}`}
+                value={strengthSelectValue}
+                onChange={(value) => {
+                  if (value === 'Custom') {
+                    setPurpose('Custom');
+                    setPurposeChoice('Custom');
+                    setManualMix(true);
+                    return;
+                  }
+                  const nextMixByUnit = settings.strengthUnit === 'PSI'
+                    ? strengthDatabase.find((mix) => String(mix.strengthPsi) === value)
+                    : strengthDatabase.find((mix) => String(mix.strengthMpa) === value);
+                  const nextStrength = nextMixByUnit?.strengthMpa ?? Number(value);
                   setStrengthMpa(nextStrength);
-                  const nextMix = getMixByStrength(nextStrength);
+                  const nextMix = nextMixByUnit ?? getMixByStrength(nextStrength);
                   if (nextMix.ratio) setManualRatio(nextMix.ratio);
                   setManualMix(true);
                 }}
-                options={strengthDatabase.map((mix) => String(mix.strengthMpa))}
+                options={strengthOptions}
               />
-              <Select label="Cement Type" value={cementType} onChange={(value) => setCementType(value as CementType)} options={cementTypes} />
+              <CementTypeSelect
+                label="Cement Type"
+                value={cementChoice}
+                onChange={(value) => {
+                  const builtInType = baseCementTypes.find((type) => settings.cementTypeNames[type] === value);
+                  if (builtInType) {
+                    setCementChoice(value);
+                    setCementType(builtInType);
+                    setCustomCementName(settings.cementTypeNames[builtInType]);
+                    return;
+                  }
+                  setCementChoice(value);
+                  setCementType('Custom');
+                  setCustomCementName(value);
+                }}
+                options={cementOptions}
+              />
+              <NumberField
+                label="Additive %"
+                value={costs.additivePercentOfWater}
+                onChange={(value) => setCosts({ ...costs, additivePercentOfWater: value })}
+              />
             </div>
+            {isCustomMix && (
+              <div className="mt-3">
+                <Field label="Custom purpose name" value={customPurposeName} onChange={setCustomPurposeName} />
+              </div>
+            )}
+            {isCustomMix && (
+              <div className="mt-3">
+                <NumberField
+                  label={`Approximate custom strength ${settings.strengthUnit}`}
+                  value={settings.strengthUnit === 'PSI' ? Math.round(strengthMpa * PSI_PER_MPA) : strengthMpa}
+                  onChange={(value) => setStrengthMpa(settings.strengthUnit === 'PSI' ? value / PSI_PER_MPA : value)}
+                />
+              </div>
+            )}
             <div className="mt-3 rounded-md border border-black/10 bg-[#eef1e8] p-3 dark:border-white/10 dark:bg-[#20251f]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1 text-sm">
-                  <p className="font-black">{selectedMix.label} / {selectedMix.strengthPsi} PSI</p>
-                  <p className="text-black/70 dark:text-white/70">{selectedMix.typicalUse}</p>
-                  <p className="text-black/70 dark:text-white/70">{cementDescriptions[cementType]}</p>
-                  {!selectedMix.ratio && <p className="font-bold text-[#b8562f]">Uses a provisional 1 : 1 : 2 quantity estimate until a verified design mix is entered.</p>}
+                  <p className="font-black">
+                    {isCustomMix ? customPurposeName : selectedMix.label} / {isCustomMix ? `${formatStrength(approximateCustomStrength?.strengthMpa ?? strengthMpa, settings.strengthUnit)} approximate custom` : formatStrength(strengthMpa, settings.strengthUnit)}
+                  </p>
+                  <p className="font-bold">Mix ratio: {formatRatio(ratio)}</p>
+                  <p className="text-xs font-black uppercase text-black/55 dark:text-white/55">Cement : Sand : Stone</p>
+                  <p className="font-bold">Water: {waterDisplay.value} {waterDisplay.unit} at w/c {settings.waterCementRatio}</p>
+                  {approximateCustomStrength && (
+                    <p className="rounded-md bg-[#fff4ea] p-2 font-bold text-[#8a3b1d] dark:bg-[#311f18] dark:text-[#ffbd91]">
+                      Approximate ratio only: similar to about {formatStrength(approximateCustomStrength.strengthMpa, settings.strengthUnit)}. Not substantiated. Custom mixes depend on water, aggregate, cement, additives, curing and site practice.
+                    </p>
+                  )}
+                  <p className="text-black/70 dark:text-white/70">{isCustomMix ? 'User-defined concrete mix.' : selectedMix.typicalUse}</p>
+                  <p className="text-black/70 dark:text-white/70">
+                    {customCementName} - {cementType === 'Custom' ? 'User-defined cement, no Type I-V technical description applied.' : cementDescriptions[cementType]}
+                  </p>
+                  {!isCustomMix && !selectedMix.ratio && <p className="font-bold text-[#b8562f]">Uses a provisional 1 : 1 : 2 quantity estimate until a verified design mix is entered.</p>}
                 </div>
                 <button className="min-h-11 rounded-md bg-[#1f7a5a] px-4 font-black text-white" onClick={() => setManualMix((value) => !value)}>
                   {manualMix ? 'Manual' : 'Auto'}
@@ -153,19 +627,38 @@ export function ConcreteMixPro() {
               {manualMix && (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {manualRatio.map((part, index) => (
-                    <NumberField key={index} label={['Cement', 'Sand', 'Stone'][index]} value={part} onChange={(value) => setManualRatio((next) => next.map((item, i) => (i === index ? value : item)) as [number, number, number])} />
+                    <NumberField
+                      key={index}
+                      label={['Cement', 'Sand', 'Stone'][index]}
+                      value={part}
+                      onChange={(value) => {
+                        const nextRatio = manualRatio.map((item, i) => (i === index ? value : item)) as [number, number, number];
+                        setManualRatio(nextRatio);
+                        setPurpose('Custom');
+                        setPurposeChoice('Custom');
+                        setManualMix(true);
+                        const estimate = estimateStrengthFromRatio(nextRatio);
+                        if (estimate) setStrengthMpa(estimate.strengthMpa);
+                      }}
+                    />
                   ))}
                 </div>
+              )}
+              {isCustomMix && (
+                <button className="mt-3 min-h-11 w-full rounded-md bg-[#1f7a5a] px-4 font-black text-white active:bg-[#2f9f75]" onClick={saveCustomCurrent}>
+                  SAVE CUSTOM
+                </button>
               )}
             </div>
           </Panel>
 
           <Panel title="Materials" action={<Badge>{formatRatio(ratio)}</Badge>}>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <Metric label="Cement" value={round(result.materials.cementKg, 1)} unit="kg" sub={`${round(result.materials.cementBags, 1)} bags`} />
               <Metric label="Sand" value={round(result.materials.sandM3, 3)} unit="m3" sub={`${round(result.materials.sandKg, 0)} kg`} />
               <Metric label="Aggregate" value={round(result.materials.aggregateM3, 3)} unit="m3" sub={`${round(result.materials.aggregateKg, 0)} kg`} />
-              <Metric label="Water" value={round(result.materials.waterLiters, 0)} unit="L" sub={`w/c ${settings.waterCementRatio}`} />
+              <Metric label="Water" value={waterDisplay.value} unit={waterDisplay.unit} sub={`w/c ${settings.waterCementRatio}`} />
+              <Metric label={costs.otherName || 'Additive'} value={additiveDisplay.value} unit={additiveDisplay.unit} sub={`${round(result.materials.additiveContainers, 2)} containers`} />
             </div>
             {settings.unitSystem === 'imperial' && (
               <p className="mt-3 text-sm font-semibold text-black/65 dark:text-white/70">
@@ -174,55 +667,40 @@ export function ConcreteMixPro() {
             )}
           </Panel>
 
-          <Panel title="Costs" action={<button className="text-sm font-black text-[#1f7a5a]" onClick={() => setOpenCosts((value) => !value)}>{openCosts ? 'Hide' : 'Edit'}</button>}>
-            <div className="grid grid-cols-3 gap-2 text-center text-sm font-bold">
-              <SummaryPill label="Materials" value={`${currency}${round(result.costs.materialSubtotal, 2)}`} />
-              <SummaryPill label="Labor" value={`${currency}${round(result.costs.laborSubtotal, 2)}`} />
-              <SummaryPill label="Per m3" value={`${currency}${round(result.costs.costPerM3, 2)}`} />
+          <Panel title="Costs">
+            <div className="grid grid-cols-2 gap-2 text-center text-sm font-bold sm:grid-cols-4">
+              <SummaryPill label="Cement" value={`${currency}${formatMoney(result.costs.cementCost)}`} />
+              <SummaryPill label="Sand" value={`${currency}${formatMoney(result.costs.sandCost)}`} />
+              <SummaryPill label="Stone" value={`${currency}${formatMoney(result.costs.aggregateCost)}`} />
+              <SummaryPill label={costs.otherName || 'Additive'} value={`${currency}${formatMoney(result.costs.otherCost)}`} />
             </div>
-            {openCosts && (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <NumberField label="Cement / bag" value={costs.cementPerBag} onChange={(value) => setCosts({ ...costs, cementPerBag: value })} prefix={currency} />
-                <NumberField label="Cement / kg" value={costs.cementPerKg} onChange={(value) => setCosts({ ...costs, cementPerKg: value })} prefix={currency} />
-                <NumberField label="Sand / m3" value={costs.sandPerM3} onChange={(value) => setCosts({ ...costs, sandPerM3: value })} prefix={currency} />
-                <NumberField label="Stone / m3" value={costs.aggregatePerM3} onChange={(value) => setCosts({ ...costs, aggregatePerM3: value })} prefix={currency} />
-                <NumberField label="Water" value={costs.water} onChange={(value) => setCosts({ ...costs, water: value })} prefix={currency} />
-                <NumberField label="Labor" value={costs.labor} onChange={(value) => setCosts({ ...costs, labor: value })} prefix={currency} />
-                <NumberField label="Transport" value={costs.transport} onChange={(value) => setCosts({ ...costs, transport: value })} prefix={currency} />
-              </div>
-            )}
+            <p className="mt-3 text-sm font-semibold text-black/65 dark:text-white/70">Cost rates are set in Settings so they stay saved for the next calculation.</p>
           </Panel>
 
           <Panel title="Settings" action={<button className="text-sm font-black text-[#1f7a5a]" onClick={() => setOpenSettings((value) => !value)}>{openSettings ? 'Hide' : 'Edit'}</button>}>
-            <div className="flex items-center justify-between gap-3 rounded-md bg-black/5 p-3 text-sm font-bold dark:bg-white/10">
-              <span>{settings.bagSize} kg bags</span>
-              <span>{settings.wastagePercent}% waste</span>
-              <span>{settings.currencySymbol}</span>
-            </div>
-            {openSettings && <SettingsEditor settings={settings} setSettings={setSettings} setUnit={setUnit} />}
+            {openSettings && <SettingsEditor settings={settings} setSettings={setSettings} setUnit={setUnit} costs={costs} setCosts={setCosts} currency={currency} onClearSelected={clearSelectedData} />}
           </Panel>
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-5">
           <Panel title="Result" emphasis action={<Calculator size={22} />}>
-            <div className="grid grid-cols-3 gap-2">
-              <Metric label="Wet" value={round(result.wetVolumeM3, 3)} unit="m3" sub={`${round(result.volumeLiters, 0)} L`} strong />
-              <Metric label="Dry" value={round(result.dryVolumeM3, 3)} unit="m3" sub={`x ${settings.dryVolumeFactor}`} strong />
-              <Metric label="Feet" value={round(result.volumeFt3, 2)} unit="ft3" sub="volume" strong />
+            <div className="rounded-md bg-[#101418] p-4 text-white dark:bg-white dark:text-[#101418]">
+              <p className="text-xs font-black uppercase opacity-70">Total actual cost estimate</p>
+              <p className="mt-1 text-3xl font-black">{currency}{formatMoney(result.costs.total)}</p>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <Metric label="Bags" value={Math.ceil(result.materials.cementBags)} unit="" sub={`${settings.bagSize} kg`} />
-              <Metric label="Mixer" value={Math.ceil(result.mixerBatches)} unit="" sub="loads" />
-              <Metric label="Barrows" value={Math.ceil(result.wheelbarrows)} unit="" sub="loads" />
-            </div>
-            <div className="mt-4 rounded-md bg-[#101418] p-4 text-white dark:bg-white dark:text-[#101418]">
-              <p className="text-xs font-black uppercase opacity-70">Total estimate</p>
-              <p className="mt-1 text-3xl font-black">{currency}{round(result.costs.total, 2)}</p>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <Action icon={<Save size={18} />} label="Save" onClick={saveCurrent} />
-              <Action icon={<Printer size={18} />} label="PDF" onClick={() => printReport(input, result)} />
               <Action icon={<Share2 size={18} />} label="Share" onClick={shareResult} />
+            </div>
+          </Panel>
+
+          <Panel title="Order List">
+            <p className="text-sm font-semibold text-black/65 dark:text-white/70">
+              Creates a shopping/order-list PDF for the current project and location.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Action icon={<Save size={18} />} label="Save Order" onClick={saveOrderList} />
+              <Action icon={<Share2 size={18} />} label="Share Order" onClick={shareOrderList} />
             </div>
           </Panel>
 
@@ -247,17 +725,21 @@ export function ConcreteMixPro() {
                     className="w-full rounded-md border border-black/10 bg-white p-3 text-left text-sm dark:border-white/10 dark:bg-[#1d211e]"
                     onClick={() => {
                       setProjectName(item.input.projectName);
+                      setLocationInProject(item.input.locationInProject || '');
                       setNotes(item.input.notes);
                       setShape(item.input.shape);
                       setUnit(item.input.unit);
                       setPurpose(item.input.purpose);
+                      setPurposeChoice(item.input.purpose);
                       setCementType(item.input.cementType);
+                      setCustomCementName(item.input.customCementName || settings.cementTypeNames[item.input.cementType]);
+                      setCementChoice(item.input.customCementName || settings.cementTypeNames[item.input.cementType]);
                       setStrengthMpa(item.input.strengthMpa);
                       setDimensions(item.input.dimensions);
                     }}
                   >
                     <span className="block font-bold">{item.input.projectName || 'Concrete estimate'}</span>
-                    <span>{round(item.result.wetVolumeM3, 3)} m3 - {new Date(item.createdAt).toLocaleDateString()}</span>
+                    <span>{round(item.result.wetVolumeM3, 3)} m3 - {formatDateTime(item.createdAt)}</span>
                   </button>
                 ))
               )}
@@ -265,35 +747,211 @@ export function ConcreteMixPro() {
           </Panel>
         </aside>
       </div>
+      {showUnsavedPrompt && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-black/10 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-[#191d1a]">
+            <h2 className="text-lg font-black">Save project?</h2>
+            <p className="mt-2 text-sm font-semibold text-black/65 dark:text-white/70">
+              Do you want to save project "{projectName || 'Concrete project'}" before creating or loading another record?
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <button className="min-h-11 rounded-md border border-black/15 px-3 font-black dark:border-white/15" onClick={cancelPendingAction}>Cancel</button>
+              <button className="min-h-11 rounded-md bg-[#b8562f] px-3 font-black text-white" onClick={discardBeforeAction}>No</button>
+              <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 font-black text-white" onClick={confirmSaveBeforeAction}>Yes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
-function DimensionFields({ shape, unit, dimensions, setDimensions }: { shape: Shape; unit: LengthUnit; dimensions: Dimensions; setDimensions: (next: Dimensions) => void }) {
+function DimensionFields({ shape, setShape, unit, dimensions, setDimensions }: { shape: Shape; setShape: (next: Shape) => void; unit: LengthUnit; dimensions: Dimensions; setDimensions: (next: Dimensions) => void }) {
   const update = (key: keyof Dimensions, value: number) => setDimensions({ ...dimensions, [key]: value });
-  if (shape === 'custom') return <div className="mt-3"><NumberField label="Volume m3" value={dimensions.customVolume} onChange={(value) => update('customVolume', value)} /></div>;
-  if (shape === 'circle') return <div className="mt-3 grid gap-3 sm:grid-cols-2"><NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
-  if (shape === 'column') return <div className="mt-3 grid gap-3 sm:grid-cols-2"><NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Height (${unit})`} value={dimensions.height} onChange={(value) => update('height', value)} /></div>;
-  if (shape === 'stair') return <div className="mt-3 grid gap-3 sm:grid-cols-2"><NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label="Steps" value={dimensions.steps} onChange={(value) => update('steps', value)} /><NumberField label={`Rise (${unit})`} value={dimensions.rise} onChange={(value) => update('rise', value)} /><NumberField label={`Run (${unit})`} value={dimensions.run} onChange={(value) => update('run', value)} /></div>;
-  return <div className="mt-3 grid gap-3 sm:grid-cols-3"><NumberField label={`Length (${unit})`} value={dimensions.length} onChange={(value) => update('length', value)} /><NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
+  const shapeSelect = (
+    <Select
+      label="Shape"
+      value={shape}
+      onChange={(value) => setShape(value as Shape)}
+      options={shapes.map((item) => item.id)}
+      labels={Object.fromEntries(shapes.map((item) => [item.id, item.label]))}
+    />
+  );
+  if (shape === 'custom') return <div className="mt-3 grid gap-3 sm:grid-cols-2">{shapeSelect}<NumberField label="Volume m3" value={dimensions.customVolume} onChange={(value) => update('customVolume', value)} /></div>;
+  if (shape === 'circle') return <div className="mt-3 grid gap-3 sm:grid-cols-3">{shapeSelect}<NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
+  if (shape === 'column') return <div className="mt-3 grid gap-3 sm:grid-cols-3">{shapeSelect}<NumberField label={`Diameter (${unit})`} value={dimensions.diameter} onChange={(value) => update('diameter', value)} /><NumberField label={`Height (${unit})`} value={dimensions.height} onChange={(value) => update('height', value)} /></div>;
+  if (shape === 'stair') return <div className="mt-3 grid gap-3 sm:grid-cols-5">{shapeSelect}<NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label="Steps" value={dimensions.steps} onChange={(value) => update('steps', value)} /><NumberField label={`Rise (${unit})`} value={dimensions.rise} onChange={(value) => update('rise', value)} /><NumberField label={`Run (${unit})`} value={dimensions.run} onChange={(value) => update('run', value)} /></div>;
+  return <div className="mt-3 grid gap-3 sm:grid-cols-4">{shapeSelect}<NumberField label={`Length (${unit})`} value={dimensions.length} onChange={(value) => update('length', value)} /><NumberField label={`Width (${unit})`} value={dimensions.width} onChange={(value) => update('width', value)} /><NumberField label={`Depth (${unit})`} value={dimensions.depth} onChange={(value) => update('depth', value)} /></div>;
 }
 
-function SettingsEditor({ settings, setSettings, setUnit }: { settings: Settings; setSettings: (next: Settings) => void; setUnit: (unit: LengthUnit) => void }) {
+function SettingsEditor({
+  settings,
+  setSettings,
+  setUnit,
+  costs,
+  setCosts,
+  currency,
+  onClearSelected
+}: {
+  settings: Settings;
+  setSettings: (next: Settings) => void;
+  setUnit: (unit: LengthUnit) => void;
+  costs: Costs;
+  setCosts: (next: Costs) => void;
+  currency: string;
+  onClearSelected: (options: ClearDataOptions) => void;
+}) {
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings({ ...settings, [key]: value });
+  const [clearOptions, setClearOptions] = useState<ClearDataOptions>({
+    projects: false,
+    currentLocation: false,
+    calculations: false,
+    customMixes: false,
+    cementTypes: false,
+    costs: false,
+    global: false
+  });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    Material: true,
+    Cost: false,
+    Global: false,
+    Data: false
+  });
+  const toggleGroup = (title: string) => {
+    setOpenGroups((next) => ({ ...next, [title]: !next[title] }));
+  };
+  const allClearOptionsSelected = Object.values(clearOptions).every(Boolean);
+  const anyClearOptionSelected = Object.values(clearOptions).some(Boolean);
+  const updateClearOption = (key: keyof ClearDataOptions, value: boolean) => {
+    setClearOptions((next) => ({ ...next, [key]: value }));
+  };
+  const setAllClearOptions = (value: boolean) => {
+    setClearOptions({
+      projects: value,
+      currentLocation: value,
+      calculations: value,
+      customMixes: value,
+      cementTypes: value,
+      costs: value,
+      global: value
+    });
+  };
+  const deleteSelectedData = () => {
+    onClearSelected(clearOptions);
+    setAllClearOptions(false);
+  };
+  const saveCustomCementType = () => {
+    const name = settings.cementTypeNames.Custom.trim();
+    if (!isSavedCustomCement(name)) return;
+    const nextCustomCements = [
+      {
+        id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        costPerBag: costs.cementPerBagByType.Custom,
+        updatedAt: new Date().toISOString()
+      },
+      ...costs.customCements.filter((cement) => isSavedCustomCement(cement.name) && cement.name.toLowerCase() !== name.toLowerCase())
+    ].slice(0, 30);
+    setCosts({
+      ...costs,
+      customCements: nextCustomCements,
+      cementPerBagByType: { ...costs.cementPerBagByType, Custom: 0 }
+    });
+    update('cementTypeNames', { ...settings.cementTypeNames, Custom: 'Custom cement' });
+  };
   return (
-    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-      <Select label="Unit system" value={settings.unitSystem} onChange={(value) => update('unitSystem', value as Settings['unitSystem'])} options={['metric', 'imperial']} />
-      <Select label="Default unit" value={settings.defaultUnit} onChange={(value) => { update('defaultUnit', value as LengthUnit); setUnit(value as LengthUnit); }} options={units} />
-      <Select label="Bag size" value={String(settings.bagSize)} onChange={(value) => update('bagSize', Number(value) as BagSize)} options={['25', '42.5', '50']} suffix="kg" />
-      <NumberField label="Wastage %" value={settings.wastagePercent} onChange={(value) => update('wastagePercent', value)} />
-      <NumberField label="Dry factor" value={settings.dryVolumeFactor} onChange={(value) => update('dryVolumeFactor', value)} />
-      <NumberField label="Water-cement" value={settings.waterCementRatio} onChange={(value) => update('waterCementRatio', value)} />
-      <NumberField label="Cement kg/m3" value={settings.cementDensityKgM3} onChange={(value) => update('cementDensityKgM3', value)} />
-      <NumberField label="Sand kg/m3" value={settings.sandDensityKgM3} onChange={(value) => update('sandDensityKgM3', value)} />
-      <NumberField label="Stone kg/m3" value={settings.aggregateDensityKgM3} onChange={(value) => update('aggregateDensityKgM3', value)} />
-      <NumberField label="Mixer L" value={settings.mixerCapacityLiters} onChange={(value) => update('mixerCapacityLiters', value)} />
-      <NumberField label="Barrow L" value={settings.wheelbarrowCapacityLiters} onChange={(value) => update('wheelbarrowCapacityLiters', value)} />
-      <Field label="Currency" value={settings.currencySymbol} onChange={(value) => update('currencySymbol', value)} />
+    <div className="mt-3 space-y-4">
+      <SettingsGroup title="Material" open={openGroups.Material} onToggle={() => toggleGroup('Material')}>
+        <Select label="Bag size" value={String(settings.bagSize)} onChange={(value) => update('bagSize', Number(value) as BagSize)} options={['25', '42.5', '50']} suffix="kg" />
+        <NumberField label="Wastage %" value={settings.wastagePercent} onChange={(value) => update('wastagePercent', value)} />
+        <NumberField label="Water-cement ratio" value={settings.waterCementRatio} onChange={(value) => update('waterCementRatio', value)} />
+        <p className="text-sm font-semibold text-black/60 dark:text-white/65 sm:col-span-2">
+          Example: 0.50 means 50 L water per 100 kg cement.
+        </p>
+      </SettingsGroup>
+
+      <SettingsGroup title="Cost" open={openGroups.Cost} onToggle={() => toggleGroup('Cost')}>
+        {baseCementTypes.map((type) => (
+          <div key={type} className="grid gap-2 sm:col-span-2 sm:grid-cols-[minmax(0,1fr)_150px]">
+            <CompactField
+              ariaLabel={`${type} name`}
+              value={settings.cementTypeNames[type]}
+              onChange={(value) => update('cementTypeNames', { ...settings.cementTypeNames, [type]: value })}
+            />
+            <CompactNumberField
+              ariaLabel={`${type} cost per bag`}
+              value={costs.cementPerBagByType[type]}
+              onChange={(value) => setCosts({ ...costs, cementPerBagByType: { ...costs.cementPerBagByType, [type]: value } })}
+              prefix={currency}
+              money
+            />
+          </div>
+        ))}
+        {costs.customCements.filter((cement) => isSavedCustomCement(cement.name)).map((cement) => (
+          <div key={cement.id} className="grid gap-2 sm:col-span-2 sm:grid-cols-[minmax(0,1fr)_150px]">
+            <CompactField
+              ariaLabel="Saved cement name"
+              value={cement.name}
+              onChange={(value) => setCosts({
+                ...costs,
+                customCements: costs.customCements.map((item) => item.id === cement.id ? { ...item, name: value, updatedAt: new Date().toISOString() } : item)
+              })}
+            />
+            <CompactNumberField
+              ariaLabel="Saved cement cost per bag"
+              value={cement.costPerBag}
+              onChange={(value) => setCosts({
+                ...costs,
+                customCements: costs.customCements.map((item) => item.id === cement.id ? { ...item, costPerBag: value, updatedAt: new Date().toISOString() } : item)
+              })}
+              prefix={currency}
+              money
+            />
+          </div>
+        ))}
+        <div className="grid gap-2 sm:col-span-2 sm:grid-cols-[minmax(0,1fr)_150px]">
+          <CompactField
+            ariaLabel="Custom cement name"
+            value={settings.cementTypeNames.Custom}
+            onChange={(value) => update('cementTypeNames', { ...settings.cementTypeNames, Custom: value })}
+          />
+          <MiniButton label="Save cement type" onClick={saveCustomCementType} compact>Save</MiniButton>
+        </div>
+        <NumberField label="Sand / m3" value={costs.sandPerM3} onChange={(value) => setCosts({ ...costs, sandPerM3: value })} prefix={currency} money />
+        <NumberField label="Stone / m3" value={costs.aggregatePerM3} onChange={(value) => setCosts({ ...costs, aggregatePerM3: value })} prefix={currency} money />
+        <Field label="Additive name" value={costs.otherName} onChange={(value) => setCosts({ ...costs, otherName: value })} />
+        <NumberField label="Additive cost / container" value={costs.additiveContainerCost} onChange={(value) => setCosts({ ...costs, additiveContainerCost: value })} prefix={currency} money />
+        <NumberField label="Container size" value={costs.additiveContainerSize} onChange={(value) => setCosts({ ...costs, additiveContainerSize: value })} />
+        <Select label="Container unit" value={costs.additiveUnit} onChange={(value) => setCosts({ ...costs, additiveUnit: value as AdditiveUnit })} options={additiveUnits} />
+      </SettingsGroup>
+
+      <SettingsGroup title="Global" open={openGroups.Global} onToggle={() => toggleGroup('Global')}>
+        <Select label="Unit system" value={settings.unitSystem} onChange={(value) => update('unitSystem', value as Settings['unitSystem'])} options={['metric', 'imperial']} />
+        <Select label="Default unit" value={settings.defaultUnit} onChange={(value) => { update('defaultUnit', value as LengthUnit); setUnit(value as LengthUnit); }} options={units} />
+        <Select label="Strength unit" value={settings.strengthUnit} onChange={(value) => update('strengthUnit', value as Settings['strengthUnit'])} options={['MPa', 'PSI']} />
+        <Field label="Currency" value={settings.currencySymbol} onChange={(value) => update('currencySymbol', value)} />
+      </SettingsGroup>
+
+      <SettingsGroup title="Data" open={openGroups.Data} onToggle={() => toggleGroup('Data')}>
+        <ClearCheck label="Saved projects" checked={clearOptions.projects} onChange={(value) => updateClearOption('projects', value)} />
+        <ClearCheck label="Current location in project" checked={clearOptions.currentLocation} onChange={(value) => updateClearOption('currentLocation', value)} />
+        <ClearCheck label="Saved calculations" checked={clearOptions.calculations} onChange={(value) => updateClearOption('calculations', value)} />
+        <ClearCheck label="Custom mixes" checked={clearOptions.customMixes} onChange={(value) => updateClearOption('customMixes', value)} />
+        <ClearCheck label="Custom cement types" checked={clearOptions.cementTypes} onChange={(value) => updateClearOption('cementTypes', value)} />
+        <ClearCheck label="Costs" checked={clearOptions.costs} onChange={(value) => updateClearOption('costs', value)} />
+        <ClearCheck label="Global" checked={clearOptions.global} onChange={(value) => updateClearOption('global', value)} />
+        <div className="sm:col-span-2 rounded-md border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-[#121412]">
+          <ClearCheck label="ALL" checked={allClearOptionsSelected} onChange={setAllClearOptions} />
+          <button
+            className={`mt-3 min-h-11 w-full rounded-md px-4 font-black text-white ${anyClearOptionSelected ? 'bg-[#b8562f] active:bg-[#d46b3f]' : 'cursor-not-allowed bg-black/20 dark:bg-white/20'}`}
+            onClick={deleteSelectedData}
+            disabled={!anyClearOptionSelected}
+          >
+            CLEAR SELECTED
+          </button>
+          <p className="mt-2 text-sm font-semibold text-black/60 dark:text-white/65">Deletes only the ticked data from this device.</p>
+        </div>
+      </SettingsGroup>
     </div>
   );
 }
@@ -313,31 +971,186 @@ function Panel({ children, title, description, action, emphasis = false }: { chi
   );
 }
 
-function Segmented({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { id: string; label: string }[] }) {
+function SettingsGroup({ title, children, open = true, onToggle }: { title: string; children: ReactNode; open?: boolean; onToggle?: () => void }) {
   return (
-    <div>
-      <p className="mb-2 text-sm font-bold text-black/70 dark:text-white/70">{label}</p>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {options.map((option) => (
-          <button key={option.id} className={`min-h-12 rounded-md border px-2 text-sm font-black ${value === option.id ? 'border-[#1f7a5a] bg-[#1f7a5a] text-white' : 'border-black/10 bg-[#eef1e8] dark:border-white/10 dark:bg-[#222720]'}`} onClick={() => onChange(option.id)}>
-            {option.label}
-          </button>
-        ))}
-      </div>
+    <div className="rounded-md border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+      <button className="flex min-h-10 w-full items-center justify-between text-left" onClick={onToggle} type="button">
+        <h3 className="text-sm font-black uppercase text-[#b8562f]">{title}</h3>
+        <span className="text-sm font-black text-black/45 dark:text-white/50">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && <div className="mt-3 grid gap-3 sm:grid-cols-2">{children}</div>}
     </div>
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-sm font-bold text-black/70 dark:text-white/70">{label}<input className="mt-1 h-12 w-full rounded-md border border-black/15 bg-white px-3 text-base font-bold text-[#101418] outline-none focus:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] dark:text-white" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function ClearCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex min-h-11 items-center gap-3 rounded-md border border-black/10 bg-white px-3 text-sm font-black dark:border-white/10 dark:bg-[#121412]">
+      <input
+        className="h-5 w-5 accent-[#1f7a5a]"
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      {label}
+    </label>
+  );
 }
 
-function NumberField({ label, value, onChange, prefix = '' }: { label: string; value: number; onChange: (value: number) => void; prefix?: string }) {
-  return <label className="block text-sm font-bold text-black/70 dark:text-white/70">{label}<span className="mt-1 flex h-12 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412]">{prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}<input className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white" type="number" min="0" step="any" value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Number(event.target.value))} /></span></label>;
+function Field({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  return <label className={`block text-sm font-bold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<input className={`mt-1 h-12 w-full rounded-md border px-3 text-base font-bold outline-none focus:border-[#1f7a5a] ${disabled ? 'border-black/10 bg-black/[0.04] text-black/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40' : 'border-black/15 bg-white text-[#101418] dark:border-white/15 dark:bg-[#121412] dark:text-white'}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} /></label>;
 }
 
-function Select({ label, value, onChange, options, suffix = '' }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; suffix?: string }) {
-  return <label className="block text-sm font-bold text-black/70 dark:text-white/70">{label}<span className="mt-1 flex h-12 items-center rounded-md border border-black/15 bg-white px-2 dark:border-white/15 dark:bg-[#121412]"><select className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white" value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
+function NumberField({ label, value, onChange, prefix = '', money = false }: { label: string; value: number; onChange: (value: number) => void; prefix?: string; money?: boolean }) {
+  const formatValue = (next: number) => (money ? next.toFixed(2) : String(Number.isFinite(next) ? next : 0));
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(formatValue(Number.isFinite(value) ? value : 0));
+
+  useEffect(() => {
+    if (!focused) setDraft(formatValue(Number.isFinite(value) ? value : 0));
+  }, [focused, money, value]);
+
+  return (
+    <label className="block text-sm font-bold text-black/70 dark:text-white/70">
+      {label}
+      <span className="mt-1 flex h-12 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412]">
+        {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
+        <input
+          className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white"
+          inputMode="decimal"
+          value={draft}
+          onFocus={() => {
+            setFocused(true);
+            if (value === 0) setDraft('');
+          }}
+          onBlur={() => {
+            setFocused(false);
+            const parsed = Number(draft);
+            const nextValue = draft.trim() === '' || !Number.isFinite(parsed) ? 0 : parsed;
+            onChange(nextValue);
+            setDraft(formatValue(nextValue));
+          }}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            onChange(Number(event.target.value) || 0);
+          }}
+        />
+      </span>
+    </label>
+  );
+}
+
+function CompactField({ ariaLabel, value, onChange }: { ariaLabel: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <input
+      aria-label={ariaLabel}
+      className="h-11 w-full rounded-md border border-black/15 bg-white px-3 text-base font-bold text-[#101418] outline-none focus:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] dark:text-white"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+function CompactNumberField({ ariaLabel, value, onChange, prefix = '', money = false }: { ariaLabel: string; value: number; onChange: (value: number) => void; prefix?: string; money?: boolean }) {
+  const formatValue = (next: number) => (money ? next.toFixed(2) : String(Number.isFinite(next) ? next : 0));
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(formatValue(Number.isFinite(value) ? value : 0));
+
+  useEffect(() => {
+    if (!focused) setDraft(formatValue(Number.isFinite(value) ? value : 0));
+  }, [focused, money, value]);
+
+  return (
+    <span className="flex h-11 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412]">
+      {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
+      <input
+        aria-label={ariaLabel}
+        className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white"
+        inputMode="decimal"
+        value={draft}
+        onFocus={() => {
+          setFocused(true);
+          if (value === 0) setDraft('');
+        }}
+        onBlur={() => {
+          setFocused(false);
+          const parsed = Number(draft);
+          const nextValue = draft.trim() === '' || !Number.isFinite(parsed) ? 0 : parsed;
+          onChange(nextValue);
+          setDraft(formatValue(nextValue));
+        }}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          onChange(Number(event.target.value) || 0);
+        }}
+      />
+    </span>
+  );
+}
+
+function Select({ label, value, onChange, options, suffix = '', labels = {}, disabled = false }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; suffix?: string; labels?: Record<string, string>; disabled?: boolean }) {
+  return <label className={`block text-sm font-bold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<span className={`mt-1 flex h-12 items-center rounded-md border px-2 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}><select className="w-full bg-transparent text-base font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
+}
+
+function CementTypeSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
+  return (
+    <label className="block text-sm font-bold text-black/70 dark:text-white/70">
+      {label}
+      <span className="mt-1 flex h-12 items-center rounded-md border border-black/15 bg-white px-2 dark:border-white/15 dark:bg-[#121412]">
+        <select className="w-full bg-transparent text-base font-bold text-[#101418] outline-none dark:text-white" value={value} onChange={(event) => onChange(event.target.value)}>
+          {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      </span>
+    </label>
+  );
+}
+
+function estimateStrengthFromRatio(ratio: [number, number, number]) {
+  const validRatio = ratio.every((part) => Number.isFinite(part) && part > 0);
+  if (!validRatio) return null;
+  const normalized = ratio.map((part) => part / ratio[0]);
+  const candidates = strengthDatabase.filter((mix) => mix.ratio);
+  const closest = candidates.reduce<{ strengthMpa: number; score: number } | null>((best, mix) => {
+    const mixRatio = mix.ratio as [number, number, number];
+    const mixNormalized = mixRatio.map((part) => part / mixRatio[0]);
+    const score = Math.abs(normalized[1] - mixNormalized[1]) + Math.abs(normalized[2] - mixNormalized[2]);
+    if (!best || score < best.score) return { strengthMpa: mix.strengthMpa, score };
+    return best;
+  }, null);
+  return closest;
+}
+
+function formatStrength(strengthMpa: number, unit: Settings['strengthUnit']) {
+  if (unit === 'PSI') return `${Math.round(strengthMpa * PSI_PER_MPA)} PSI`;
+  return `${round(strengthMpa, 1)} MPa`;
+}
+
+function formatLiquid(liters: number, unitSystem: Settings['unitSystem']) {
+  if (unitSystem === 'imperial') {
+    if (liters < LITERS_PER_GALLON) return { value: round(liters / LITERS_PER_FLUID_OUNCE, 1), unit: 'fl oz' };
+    return { value: round(liters / LITERS_PER_GALLON, 2), unit: 'gal' };
+  }
+  if (liters < 1) return { value: round(liters * 1000, 0), unit: 'ml' };
+  return { value: round(liters, 1), unit: 'L' };
+}
+
+function formatMoney(value: number) {
+  return round(value, 2).toFixed(2);
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function isSavedCustomCement(name: string) {
+  const normalized = name.trim().toLowerCase();
+  return normalized.length > 0 && normalized !== 'custom cement';
 }
 
 function Metric({ label, value, unit, sub, strong = false }: { label: string; value: number; unit: string; sub: string; strong?: boolean }) {
@@ -353,5 +1166,19 @@ function Badge({ children }: { children: ReactNode }) {
 }
 
 function Action({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
-  return <button className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#101418] px-3 font-black text-white dark:bg-white dark:text-[#101418]" onClick={onClick}>{icon}{label}</button>;
+  return <button className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#1f7a5a] px-3 font-black text-white active:bg-[#2f9f75]" onClick={onClick}>{icon}{label}</button>;
+}
+
+function MiniButton({ children, label, onClick, disabled = false, compact = false }: { children: ReactNode; label: string; onClick: () => void; disabled?: boolean; compact?: boolean }) {
+  return (
+    <button
+      className={`${compact ? 'h-11' : 'mt-6 h-12'} rounded-md border px-2 text-xs font-black ${disabled ? 'cursor-not-allowed border-black/10 bg-black/[0.04] text-black/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30' : 'border-[#b8562f]/40 bg-[#fff4ea] text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91]'}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </button>
+  );
 }

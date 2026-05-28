@@ -1,4 +1,5 @@
 import { purposeRecommendations, strengthDatabase } from './data';
+import { getSelectedCementBagCost } from './costing';
 import type { CalculationInput, CalculationResult, MixDesign, Purpose } from './types';
 import { cubicMetersToCubicFeet, lengthToMeters, round, safeNumber } from './units';
 
@@ -29,14 +30,17 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
   const cementKg = cementVolumeM3 * input.settings.cementDensityKgM3;
   const waterCementRatio = input.settings.waterCementRatio;
   const waterLiters = cementKg * waterCementRatio;
+  const additiveLiters = waterLiters * Math.max(0, safeNumber(input.costs.additivePercentOfWater)) / 100;
+  const additiveContainerLiters = additiveUnitToLiters(input.costs.additiveContainerSize, input.costs.additiveUnit);
+  const additiveContainers = additiveContainerLiters > 0 ? additiveLiters / additiveContainerLiters : 0;
   const cementBags = input.settings.bagSize > 0 ? cementKg / input.settings.bagSize : 0;
-  const cementCost = input.costs.cementPerBag > 0 ? cementBags * input.costs.cementPerBag : cementKg * input.costs.cementPerKg;
-  const materialSubtotal =
-    cementCost +
-    sandM3 * safeNumber(input.costs.sandPerM3) +
-    aggregateM3 * safeNumber(input.costs.aggregatePerM3) +
-    safeNumber(input.costs.water);
-  const laborSubtotal = safeNumber(input.costs.labor) + safeNumber(input.costs.transport);
+  const cementBagCost = getSelectedCementBagCost(input);
+  const cementCost = cementBagCost > 0 ? cementBags * cementBagCost : cementKg * input.costs.cementPerKg;
+  const sandCost = sandM3 * safeNumber(input.costs.sandPerM3);
+  const aggregateCost = aggregateM3 * safeNumber(input.costs.aggregatePerM3);
+  const otherCost = additiveContainers * safeNumber(input.costs.additiveContainerCost);
+  const materialSubtotal = cementCost + sandCost + aggregateCost + otherCost;
+  const laborSubtotal = 0;
   const total = materialSubtotal + laborSubtotal;
   const mixerBatches = input.settings.mixerCapacityLiters > 0 ? (wetVolumeM3 * 1000 * wastageMultiplier) / input.settings.mixerCapacityLiters : 0;
   const wheelbarrows =
@@ -54,9 +58,15 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
       sandKg: sandM3 * input.settings.sandDensityKgM3,
       aggregateM3,
       aggregateKg: aggregateM3 * input.settings.aggregateDensityKgM3,
-      waterLiters
+      waterLiters,
+      additiveLiters,
+      additiveContainers
     },
     costs: {
+      cementCost,
+      sandCost,
+      aggregateCost,
+      otherCost,
       materialSubtotal,
       laborSubtotal,
       total,
@@ -66,6 +76,14 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
     wheelbarrows,
     warnings: buildWarnings(input, wetVolumeM3)
   };
+}
+
+function additiveUnitToLiters(value: number, unit: CalculationInput['costs']['additiveUnit']) {
+  const safeValue = safeNumber(value);
+  if (unit === 'ml') return safeValue / 1000;
+  if (unit === 'gal') return safeValue * 3.785411784;
+  if (unit === 'fl oz') return safeValue * 0.0295735296;
+  return safeValue;
 }
 
 function calculateWetVolume(input: CalculationInput) {
@@ -92,7 +110,7 @@ function buildWarnings(input: CalculationInput, wetVolumeM3: number) {
   const recommended = purposeRecommendations[input.purpose];
   const depthM = lengthToMeters(input.dimensions.depth, input.unit);
   if (wetVolumeM3 <= 0) warnings.push('Enter valid positive dimensions to calculate concrete.');
-  if (input.strengthMpa < recommended.strengthMpa) {
+  if (input.purpose !== 'Custom' && input.strengthMpa < recommended.strengthMpa) {
     warnings.push(`${input.strengthMpa} MPa concrete is not recommended for ${input.purpose.toLowerCase()}.`);
   }
   if (input.settings.waterCementRatio < 0.4 || input.settings.waterCementRatio > 0.6) {

@@ -1,80 +1,221 @@
 import { cementDescriptions } from './data';
+import { getSelectedCementBagCost } from './costing';
 import { formatRatio } from './engine';
 import type { CalculationInput, CalculationResult } from './types';
 import { round } from './units';
 
-export function buildReportHtml(input: CalculationInput, result: CalculationResult) {
+const pageWidth = 595;
+const pageHeight = 842;
+
+export function downloadReportPdf(input: CalculationInput, result: CalculationResult) {
+  const blob = createReportPdfBlob(input, result);
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function shareReportPdf(input: CalculationInput, result: CalculationResult) {
+  const blob = createReportPdfBlob(input, result);
+  const file = new File([blob], `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`, { type: 'application/pdf' });
+
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ title: 'ConcreteMix Pro estimate', files: [file] });
+    return;
+  }
+
+  downloadReportPdf(input, result);
+}
+
+export function downloadOrderPdf(input: CalculationInput, result: CalculationResult) {
+  const blob = createOrderPdfBlob(input, result);
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function shareOrderPdf(input: CalculationInput, result: CalculationResult) {
+  const blob = createOrderPdfBlob(input, result);
+  const file = new File([blob], `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`, { type: 'application/pdf' });
+
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ title: 'ConcreteMix Pro order list', files: [file] });
+    return;
+  }
+
+  downloadOrderPdf(input, result);
+}
+
+function createReportPdfBlob(input: CalculationInput, result: CalculationResult) {
+  const lines = wrapLines(buildReportText(input, result), 82).slice(0, 54);
+  return createPdfBlob(lines);
+}
+
+function createOrderPdfBlob(input: CalculationInput, result: CalculationResult) {
+  const lines = wrapLines(buildOrderText(input, result), 82).slice(0, 54);
+  return createPdfBlob(lines);
+}
+
+function createPdfBlob(lines: string[]) {
+  const contentLines = ['BT', '/F1 11 Tf', '50 790 Td', '14 TL'];
+
+  lines.forEach((line, index) => {
+    if (index > 0) contentLines.push('T*');
+    contentLines.push(`(${escapePdfText(line)}) Tj`);
+  });
+
+  contentLines.push('ET');
+  const content = contentLines.join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`
+  ];
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+
+  objects.forEach((object, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => {
+    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob([pdf], { type: 'application/pdf' });
+}
+
+function buildReportText(input: CalculationInput, result: CalculationResult) {
   const currency = input.settings.currencySymbol;
-  const date = new Date().toLocaleDateString();
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(input.projectName || 'ConcreteMix Pro Report')}</title>
-  <style>
-    body { font-family: Arial, sans-serif; color: #111827; margin: 32px; line-height: 1.45; }
-    h1 { margin: 0 0 4px; font-size: 28px; }
-    h2 { margin-top: 24px; border-bottom: 1px solid #d1d5db; padding-bottom: 6px; font-size: 17px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    td, th { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
-    .muted { color: #4b5563; }
-    .total { font-size: 20px; font-weight: 700; }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(input.projectName || 'ConcreteMix Pro')}</h1>
-  <div class="muted">${date} · ${escapeHtml(input.purpose)} · ${escapeHtml(input.shape)}</div>
-  <h2>Dimensions</h2>
-  <table>
-    <tr><td>Unit</td><td>${input.unit}</td></tr>
-    <tr><td>Length</td><td>${input.dimensions.length}</td></tr>
-    <tr><td>Width</td><td>${input.dimensions.width}</td></tr>
-    <tr><td>Depth / Thickness</td><td>${input.dimensions.depth}</td></tr>
-    <tr><td>Wet Volume</td><td>${round(result.wetVolumeM3, 3)} m³ / ${round(result.volumeLiters, 0)} L / ${round(result.volumeFt3, 2)} ft³</td></tr>
-    <tr><td>Dry Volume</td><td>${round(result.dryVolumeM3, 3)} m³</td></tr>
-  </table>
-  <h2>Mix</h2>
-  <table>
-    <tr><td>Strength</td><td>${input.strengthMpa} MPa</td></tr>
-    <tr><td>Ratio</td><td>${formatRatio(input.ratio)}</td></tr>
-    <tr><td>Cement Type</td><td>${input.cementType} - ${cementDescriptions[input.cementType]}</td></tr>
-    <tr><td>Water-cement ratio</td><td>${input.settings.waterCementRatio}</td></tr>
-    <tr><td>Wastage</td><td>${input.settings.wastagePercent}%</td></tr>
-  </table>
-  <h2>Materials</h2>
-  <table>
-    <tr><td>Cement</td><td>${round(result.materials.cementKg, 1)} kg / ${round(result.materials.cementBags, 1)} bags</td></tr>
-    <tr><td>Sand</td><td>${round(result.materials.sandM3, 3)} m³ / ${round(result.materials.sandKg, 0)} kg</td></tr>
-    <tr><td>Aggregate</td><td>${round(result.materials.aggregateM3, 3)} m³ / ${round(result.materials.aggregateKg, 0)} kg</td></tr>
-    <tr><td>Water</td><td>${round(result.materials.waterLiters, 0)} L</td></tr>
-  </table>
-  <h2>Costs</h2>
-  <table>
-    <tr><td>Materials</td><td>${currency}${round(result.costs.materialSubtotal, 2)}</td></tr>
-    <tr><td>Labor and transport</td><td>${currency}${round(result.costs.laborSubtotal, 2)}</td></tr>
-    <tr><td>Total</td><td class="total">${currency}${round(result.costs.total, 2)}</td></tr>
-    <tr><td>Cost per m³</td><td>${currency}${round(result.costs.costPerM3, 2)}</td></tr>
-  </table>
-  <h2>Site Estimates</h2>
-  <table>
-    <tr><td>Mixer batches</td><td>${Math.ceil(result.mixerBatches)}</td></tr>
-    <tr><td>Wheelbarrows</td><td>${Math.ceil(result.wheelbarrows)}</td></tr>
-  </table>
-  <h2>Notes</h2>
-  <p>${escapeHtml(input.notes || 'No notes.')}</p>
-</body>
-</html>`;
+  const cementDescription = input.cementType === 'Custom' ? 'User-defined cement' : cementDescriptions[input.cementType];
+
+  return [
+    'ConcreteMix Pro Estimate',
+    `Date: ${new Date().toLocaleDateString()}`,
+    `Project: ${input.projectName || 'Concrete estimate'}`,
+    `Location: ${input.locationInProject || 'Not specified'}`,
+    `Purpose: ${input.purpose}`,
+    `Shape: ${input.shape}`,
+    '',
+    'Dimensions',
+    `Unit: ${input.unit}`,
+    `Length: ${input.dimensions.length}`,
+    `Width: ${input.dimensions.width}`,
+    `Depth / Thickness: ${input.dimensions.depth}`,
+    `Wet volume: ${round(result.wetVolumeM3, 3)} m3 / ${round(result.volumeLiters, 0)} L / ${round(result.volumeFt3, 2)} ft3`,
+    `Dry volume: ${round(result.dryVolumeM3, 3)} m3`,
+    '',
+    'Mix',
+    `Strength: ${round(input.strengthMpa, 1)} MPa`,
+    `Ratio: ${formatRatio(input.ratio)}`,
+    `Cement: ${input.customCementName} - ${cementDescription}`,
+    `Water-cement ratio: ${input.settings.waterCementRatio}`,
+    `Wastage: ${input.settings.wastagePercent}%`,
+    '',
+    'Materials',
+    `Cement: ${round(result.materials.cementKg, 1)} kg / ${round(result.materials.cementBags, 1)} bags`,
+    `Sand: ${round(result.materials.sandM3, 3)} m3 / ${round(result.materials.sandKg, 0)} kg`,
+    `Stone: ${round(result.materials.aggregateM3, 3)} m3 / ${round(result.materials.aggregateKg, 0)} kg`,
+    `Water: ${round(result.materials.waterLiters, 1)} L`,
+    `${input.costs.otherName || 'Additive'}: ${round(result.materials.additiveLiters, 3)} L / ${round(result.materials.additiveContainers, 2)} containers`,
+    '',
+    'Costs',
+    `Cement: ${currency}${formatMoney(result.costs.cementCost)}`,
+    `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
+    `Stone: ${currency}${formatMoney(result.costs.aggregateCost)}`,
+    `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`,
+    `Total: ${currency}${formatMoney(result.costs.total)}`,
+    `Cost per m3: ${currency}${formatMoney(result.costs.costPerM3)}`,
+    '',
+    'Notes',
+    input.notes || 'No notes.'
+  ].join('\n');
 }
 
-export function printReport(input: CalculationInput, result: CalculationResult) {
-  const report = window.open('', '_blank', 'width=900,height=1100');
-  if (!report) return;
-  report.document.write(buildReportHtml(input, result));
-  report.document.close();
-  report.focus();
-  report.print();
+function buildOrderText(input: CalculationInput, result: CalculationResult) {
+  const currency = input.settings.currencySymbol;
+  const orderCementBags = Math.ceil(result.materials.cementBags);
+  const cementBagCost = getSelectedCementBagCost(input);
+  const orderCementCost = cementBagCost > 0 ? orderCementBags * cementBagCost : result.costs.cementCost;
+  const orderTotal = orderCementCost + result.costs.sandCost + result.costs.aggregateCost + result.costs.otherCost;
+  return [
+    'ConcreteMix Pro Shopping / Order List',
+    `Date: ${new Date().toLocaleDateString()}`,
+    `Project: ${input.projectName || 'Concrete project'}`,
+    `Location: ${input.locationInProject || 'Not specified'}`,
+    '',
+    'Concrete Required',
+    `Purpose: ${input.purpose}`,
+    `Shape: ${input.shape}`,
+    `Wet volume: ${round(result.wetVolumeM3, 3)} m3`,
+    `Dry volume: ${round(result.dryVolumeM3, 3)} m3`,
+    `Mix ratio: ${formatRatio(input.ratio)}`,
+    `Wastage included: ${input.settings.wastagePercent}%`,
+    '',
+    'Order Items',
+    `[ ] Cement - ${input.customCementName}: ${orderCementBags} bags (${round(result.materials.cementKg, 1)} kg calculated)`,
+    `[ ] Sand: ${round(result.materials.sandM3, 3)} m3 (${round(result.materials.sandKg, 0)} kg)`,
+    `[ ] Stone / Aggregate: ${round(result.materials.aggregateM3, 3)} m3 (${round(result.materials.aggregateKg, 0)} kg)`,
+    `[ ] Water: ${round(result.materials.waterLiters, 1)} L`,
+    `[ ] ${input.costs.otherName || 'Additive'}: ${round(result.materials.additiveLiters, 3)} L (${round(result.materials.additiveContainers, 2)} containers)`,
+    '',
+    'Estimated Costs',
+    `Cement: ${currency}${formatMoney(orderCementCost)} (${orderCementBags} bags x ${currency}${formatMoney(cementBagCost)})`,
+    `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
+    `Stone / Aggregate: ${currency}${formatMoney(result.costs.aggregateCost)}`,
+    `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`,
+    `Total material estimate: ${currency}${formatMoney(orderTotal)}`,
+    '',
+    'Notes',
+    input.notes || 'No notes.'
+  ].join('\n');
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char] ?? char);
+function wrapLines(text: string, width: number) {
+  return text.split('\n').flatMap((line) => {
+    if (line.length <= width) return [line];
+    const words = line.split(' ');
+    const lines: string[] = [];
+    let current = '';
+
+    words.forEach((word) => {
+      if (`${current} ${word}`.trim().length > width) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = `${current} ${word}`.trim();
+      }
+    });
+
+    if (current) lines.push(current);
+    return lines;
+  });
+}
+
+function escapePdfText(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+function safeFileName(value: string) {
+  return value.replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'concretemix-estimate';
+}
+
+function formatMoney(value: number) {
+  return round(value, 2).toFixed(2);
 }

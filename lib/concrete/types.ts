@@ -6,7 +6,9 @@ export type BagSize = 25 | 42.5 | 50;
 
 export type WastageOption = 0 | 5 | 10;
 
-export type CementType = 'Type I' | 'Type II' | 'Type III' | 'Type IV' | 'Type V';
+export type CementType = 'Type I' | 'Type II' | 'Type III' | 'Type IV' | 'Type V' | 'Custom';
+
+export type AdditiveUnit = 'L' | 'ml' | 'gal' | 'fl oz';
 
 export type Purpose =
   | 'Site leveling'
@@ -20,7 +22,8 @@ export type Purpose =
   | 'Reinforced slab'
   | 'Beam'
   | 'Column'
-  | 'Heavy-duty industrial';
+  | 'Heavy-duty industrial'
+  | 'Custom';
 
 export interface MixDesign {
   strengthMpa: number;
@@ -35,6 +38,7 @@ export interface Settings {
   theme: 'light' | 'dark';
   defaultUnit: LengthUnit;
   unitSystem: 'metric' | 'imperial';
+  strengthUnit: 'MPa' | 'PSI';
   bagSize: BagSize;
   wastagePercent: number;
   dryVolumeFactor: number;
@@ -45,16 +49,25 @@ export interface Settings {
   mixerCapacityLiters: number;
   wheelbarrowCapacityLiters: number;
   currencySymbol: string;
+  cementTypeNames: Record<CementType, string>;
 }
 
 export interface Costs {
   cementPerBag: number;
+  cementPerBagByType: Record<CementType, number>;
+  customCements: CustomCementPreset[];
   cementPerKg: number;
   sandPerM3: number;
   aggregatePerM3: number;
   water: number;
   labor: number;
   transport: number;
+  otherName: string;
+  otherCost: number;
+  additivePercentOfWater: number;
+  additiveContainerCost: number;
+  additiveContainerSize: number;
+  additiveUnit: AdditiveUnit;
 }
 
 export interface Dimensions {
@@ -71,11 +84,13 @@ export interface Dimensions {
 
 export interface CalculationInput {
   projectName: string;
+  locationInProject: string;
   notes: string;
   shape: Shape;
   unit: LengthUnit;
   purpose: Purpose;
   cementType: CementType;
+  customCementName: string;
   strengthMpa: number;
   ratio: [number, number, number] | null;
   dimensions: Dimensions;
@@ -91,9 +106,15 @@ export interface MaterialOutput {
   aggregateM3: number;
   aggregateKg: number;
   waterLiters: number;
+  additiveLiters: number;
+  additiveContainers: number;
 }
 
 export interface CostOutput {
+  cementCost: number;
+  sandCost: number;
+  aggregateCost: number;
+  otherCost: number;
   materialSubtotal: number;
   laborSubtotal: number;
   total: number;
@@ -117,4 +138,35 @@ export interface SavedCalculation {
   createdAt: string;
   input: CalculationInput;
   result: CalculationResult;
+}
+
+export interface SavedProject {
+  id: string;
+  name: string;
+  locations: SavedProjectLocation[];
+  updatedAt: string;
+}
+
+export interface SavedProjectLocation {
+  id: string;
+  name: string;
+  input: CalculationInput;
+  updatedAt: string;
+}
+
+export interface CustomMixPreset {
+  id: string;
+  name: string;
+  strengthMpa: number;
+  cementType: CementType;
+  customCementName: string;
+  ratio: [number, number, number];
+  updatedAt: string;
+}
+
+export interface CustomCementPreset {
+  id: string;
+  name: string;
+  costPerBag: number;
+  updatedAt: string;
 }
