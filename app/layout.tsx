@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   applicationName: 'ConcreteMix Pro',
   category: 'Construction calculator',
   manifest: '/manifest.webmanifest',
+  verification: {
+    google: 'ILkNLMV7_e9pf3fdWhmCMb8bUWTe6gKVkiSX6kNNQIU'
+  },
   alternates: { canonical: '/' },
   robots: {
     index: true,
