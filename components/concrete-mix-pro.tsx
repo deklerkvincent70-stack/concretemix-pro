@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Calculator, Moon, Save, Share2, Sun } from 'lucide-react';
+import { AlertTriangle, Calculator, HelpCircle, Moon, Save, Share2, Sun } from 'lucide-react';
 import { cementDescriptions, defaultSettings, purposes, strengthDatabase } from '@/lib/concrete/data';
 import { calculateConcrete, formatRatio, getMixByStrength, recommendedForPurpose } from '@/lib/concrete/engine';
 import { downloadOrderPdf, downloadReportPdf, shareOrderPdf, shareReportPdf } from '@/lib/concrete/pdf';
@@ -455,13 +455,23 @@ export function ConcreteMixPro() {
               <p className="text-[10px] font-black uppercase tracking-wide text-[#b8562f] sm:text-xs">Concrete Quantity, Mix and Cost Calculator</p>
               <h1 className="mt-0.5 text-xl font-black leading-tight sm:mt-1 sm:text-3xl">ConcreteMix Pro</h1>
             </div>
-            <button
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
-              onClick={() => setSettings((next) => ({ ...next, theme: next.theme === 'dark' ? 'light' : 'dark' }))}
-              aria-label="Toggle theme"
-            >
-              {settings.theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <a
+                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
+                href="/help"
+                aria-label="Open help"
+                title="Help"
+              >
+                <HelpCircle size={22} />
+              </a>
+              <button
+                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
+                onClick={() => setSettings((next) => ({ ...next, theme: next.theme === 'dark' ? 'light' : 'dark' }))}
+                aria-label="Toggle theme"
+              >
+                {settings.theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
+              </button>
+            </div>
           </div>
         </header>
 

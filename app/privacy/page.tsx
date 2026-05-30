@@ -38,7 +38,12 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg font-black">Local Storage</h2>
           <p>
             ConcreteMix Pro uses local device storage only. Saved projects and settings remain on the device
-            where they were created unless you choose to export or share a PDF.
+            where they were created unless you choose to export a backup file, import a backup file or share a PDF.
+          </p>
+          <p>
+            Backup export creates a local JSON file containing saved projects, locations, settings, costs,
+            custom mixes and saved calculations. You control how that file is moved or shared. Importing a
+            backup replaces the local ConcreteMix Pro data on the device where it is imported.
           </p>
         </section>
 

@@ -28,6 +28,8 @@ Key features:
 - Material cost calculator
 - Saved projects and locations
 - PDF estimate and order-list export
+- Local backup export/import between devices
+- Built-in help guide
 - Works offline after installation
 - No login, no cloud account and no backend
 
@@ -54,6 +56,7 @@ https://concretequantitymixandcostcalculator.vindk.com/privacy
 - Account required: No.
 - Users can delete local saved projects/settings inside the app data controls.
 - App stores projects, notes, material prices and settings locally on the user's device/browser storage.
+- Users can export a local JSON backup file and import it on another device. The user controls how that file is moved or shared.
 - PDF files are created only when the user chooses Save or Share.
 
 ## App Access
@@ -79,4 +82,4 @@ No violence, gambling, user-generated content, social features, purchases or res
 - Materials and costs summary
 - Settings cost section
 - PDF/order list share sheet on Android
-
+- Help page and backup export/import controls
