@@ -154,6 +154,7 @@ export interface SavedProjectLocation {
   id: string;
   name: string;
   input: CalculationInput;
+  orderedAt?: string;
   updatedAt: string;
 }
 

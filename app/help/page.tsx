@@ -73,8 +73,12 @@ const sections = [
     items: [
       'Save creates a PDF estimate for the current calculation.',
       'Share opens the device share options where supported.',
-      'Save Order creates a shopping/order-list PDF.',
-      'Share Order shares the order-list PDF.',
+      'Save Location creates a shopping/order-list PDF for the current project location.',
+      'Share Location shares the current location order-list PDF.',
+      'Save Project creates one combined order-list PDF for all saved locations in the selected project.',
+      'Share Project shares the combined project order-list PDF.',
+      'Mark Ordered and Mark Not Ordered track whether the current location has already been ordered.',
+      'Mark All Ordered and Clear All Ordered update the status of every location in the selected project.',
       'On Android, the app uses the native share sheet so you can choose apps such as Files, Gmail, WhatsApp or Quick Share.'
     ]
   },

@@ -1,7 +1,7 @@
 import { cementDescriptions } from './data';
 import { getSelectedCementBagCost } from './costing';
-import { formatRatio } from './engine';
-import type { CalculationInput, CalculationResult } from './types';
+import { calculateConcrete, formatRatio } from './engine';
+import type { CalculationInput, CalculationResult, SavedProject } from './types';
 import { round } from './units';
 
 const pageWidth = 595;
@@ -49,6 +49,28 @@ export async function shareOrderPdf(input: CalculationInput, result: Calculation
   }
 
   downloadOrderPdf(input, result);
+}
+
+export function downloadProjectOrderPdf(project: SavedProject) {
+  const blob = createProjectOrderPdfBlob(project);
+  const fileName = `${safeFileName(`${project.name || 'concretemix'}-complete-order-list`)}.pdf`;
+  void savePdf(blob, fileName, 'ConcreteMix Pro complete project order');
+}
+
+export async function shareProjectOrderPdf(project: SavedProject) {
+  const blob = createProjectOrderPdfBlob(project);
+  const fileName = `${safeFileName(`${project.name || 'concretemix'}-complete-order-list`)}.pdf`;
+
+  if (await shareNativePdf(blob, fileName, 'ConcreteMix Pro complete project order')) return;
+
+  const file = new File([blob], fileName, { type: 'application/pdf' });
+
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ title: 'ConcreteMix Pro complete project order', files: [file] });
+    return;
+  }
+
+  downloadProjectOrderPdf(project);
 }
 
 async function savePdf(blob: Blob, fileName: string, title: string) {
@@ -110,32 +132,41 @@ async function blobToBase64(blob: Blob) {
 }
 
 function createReportPdfBlob(input: CalculationInput, result: CalculationResult) {
-  const lines = wrapLines(buildReportText(input, result), 82).slice(0, 54);
+  const lines = wrapLines(buildReportText(input, result), 82);
   return createPdfBlob(lines);
 }
 
 function createOrderPdfBlob(input: CalculationInput, result: CalculationResult) {
-  const lines = wrapLines(buildOrderText(input, result), 82).slice(0, 54);
+  const lines = wrapLines(buildOrderText(input, result), 82);
+  return createPdfBlob(lines);
+}
+
+function createProjectOrderPdfBlob(project: SavedProject) {
+  const lines = wrapLines(buildProjectOrderText(project), 82);
   return createPdfBlob(lines);
 }
 
 function createPdfBlob(lines: string[]) {
-  const contentLines = ['BT', '/F1 11 Tf', '50 790 Td', '14 TL'];
+  const chunks = chunkLines(lines.length > 0 ? lines : [''], 54);
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+  const pageRefs: string[] = [];
 
-  lines.forEach((line, index) => {
-    if (index > 0) contentLines.push('T*');
-    contentLines.push(`(${escapePdfText(line)}) Tj`);
+  chunks.forEach((chunk) => {
+    const contentLines = ['BT', '/F1 11 Tf', '50 790 Td', '14 TL'];
+    chunk.forEach((line, index) => {
+      if (index > 0) contentLines.push('T*');
+      contentLines.push(`(${escapePdfText(line)}) Tj`);
+    });
+    contentLines.push('ET');
+    const content = contentLines.join('\n');
+    const pageObjectId = objects.length + 1;
+    const contentObjectId = pageObjectId + 1;
+    pageRefs.push(`${pageObjectId} 0 R`);
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectId} 0 R >>`);
+    objects.push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
   });
 
-  contentLines.push('ET');
-  const content = contentLines.join('\n');
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`
-  ];
+  objects[1] = `<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${pageRefs.length} >>`;
 
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
@@ -210,11 +241,7 @@ function buildReportText(input: CalculationInput, result: CalculationResult) {
 
 function buildOrderText(input: CalculationInput, result: CalculationResult) {
   const currency = input.settings.currencySymbol;
-  const orderCementBags = Math.ceil(result.materials.cementBags);
-  const cementBagCost = getSelectedCementBagCost(input);
-  const orderCementCost = cementBagCost > 0 ? orderCementBags * cementBagCost : result.costs.cementCost;
-  const readyMixVolume = result.wetVolumeM3 * (1 + Math.max(0, input.settings.wastagePercent) / 100);
-  const orderTotal = input.costs.readyMixEnabled ? result.costs.readyMixCost : orderCementCost + result.costs.sandCost + result.costs.aggregateCost + result.costs.otherCost;
+  const order = getOrderSummary(input, result);
   return [
     'ConcreteMix Pro Shopping / Order List',
     `Date: ${new Date().toLocaleDateString()}`,
@@ -232,9 +259,9 @@ function buildOrderText(input: CalculationInput, result: CalculationResult) {
     '',
     'Order Items',
     ...(input.costs.readyMixEnabled ? [
-      `[ ] Ready-mix delivered concrete: ${round(readyMixVolume, 2)} m3 including wastage`
+      `[ ] Ready-mix delivered concrete: ${round(order.readyMixVolume, 2)} m3 including wastage`
     ] : [
-      `[ ] Cement - ${input.customCementName}: ${orderCementBags} bags (${round(result.materials.cementKg, 1)} kg calculated)`,
+      `[ ] Cement - ${input.customCementName}: ${order.cementBags} bags (${round(result.materials.cementKg, 1)} kg calculated)`,
       `[ ] Sand: ${round(result.materials.sandM3, 3)} m3 (${round(result.materials.sandKg, 0)} kg)`,
       `[ ] Stone / Aggregate: ${round(result.materials.aggregateM3, 3)} m3 (${round(result.materials.aggregateKg, 0)} kg)`,
       `[ ] Water: ${round(result.materials.waterLiters, 1)} L`,
@@ -243,18 +270,66 @@ function buildOrderText(input: CalculationInput, result: CalculationResult) {
     '',
     'Estimated Costs',
     ...(input.costs.readyMixEnabled ? [
-      `Ready-mix: ${currency}${formatMoney(result.costs.readyMixCost)} (${round(readyMixVolume, 2)} m3 x ${currency}${formatMoney(input.costs.readyMixPerM3)})`
+      `Ready-mix: ${currency}${formatMoney(result.costs.readyMixCost)} (${round(order.readyMixVolume, 2)} m3 x ${currency}${formatMoney(input.costs.readyMixPerM3)})`
     ] : [
-      `Cement: ${currency}${formatMoney(orderCementCost)} (${orderCementBags} bags x ${currency}${formatMoney(cementBagCost)})`,
+      `Cement: ${currency}${formatMoney(order.cementCost)} (${order.cementBags} bags x ${currency}${formatMoney(order.cementBagCost)})`,
       `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
       `Stone / Aggregate: ${currency}${formatMoney(result.costs.aggregateCost)}`,
       `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`
     ]),
-    `Total material estimate: ${currency}${formatMoney(orderTotal)}`,
+    `Total material estimate: ${currency}${formatMoney(order.total)}`,
     '',
     'Notes',
     input.notes || 'No notes.'
   ].join('\n');
+}
+
+function buildProjectOrderText(project: SavedProject) {
+  const currency = project.locations[0]?.input.settings.currencySymbol ?? '$';
+  const locationSummaries = project.locations.map((location) => {
+    const result = calculateConcrete(location.input);
+    return { location, result, order: getOrderSummary(location.input, result) };
+  });
+  const total = locationSummaries.reduce((sum, item) => sum + item.order.total, 0);
+  const ordered = locationSummaries.filter((item) => item.location.orderedAt).length;
+
+  return [
+    'ConcreteMix Pro Complete Project Order',
+    `Date: ${new Date().toLocaleDateString()}`,
+    `Project: ${project.name || 'Concrete project'}`,
+    `Locations: ${project.locations.length}`,
+    `Ordered: ${ordered} / ${project.locations.length}`,
+    '',
+    ...locationSummaries.flatMap(({ location, result, order }, index) => [
+      `${index + 1}. ${location.name}`,
+      `Status: ${location.orderedAt ? `Ordered ${new Date(location.orderedAt).toLocaleDateString()}` : 'Not ordered'}`,
+      `Purpose: ${location.input.purpose}`,
+      `Supply: ${location.input.costs.readyMixEnabled ? 'Ready-mix delivered concrete' : 'Site mix materials'}`,
+      `Wet volume: ${round(result.wetVolumeM3, 3)} m3`,
+      `Wastage included: ${location.input.settings.wastagePercent}%`,
+      ...(location.input.costs.readyMixEnabled ? [
+        `Order: ${round(order.readyMixVolume, 2)} m3 ready-mix`,
+        `Cost: ${currency}${formatMoney(order.total)}`
+      ] : [
+        `Order: ${order.cementBags} bags cement, ${round(result.materials.sandM3, 3)} m3 sand, ${round(result.materials.aggregateM3, 3)} m3 stone`,
+        `Water: ${round(result.materials.waterLiters, 1)} L`,
+        `${location.input.costs.otherName || 'Additive'}: ${round(result.materials.additiveLiters, 3)} L`,
+        `Cost: ${currency}${formatMoney(order.total)}`
+      ]),
+      ''
+    ]),
+    'Project Total',
+    `Total material estimate: ${currency}${formatMoney(total)}`
+  ].join('\n');
+}
+
+function getOrderSummary(input: CalculationInput, result: CalculationResult) {
+  const cementBags = Math.ceil(result.materials.cementBags);
+  const cementBagCost = getSelectedCementBagCost(input);
+  const cementCost = cementBagCost > 0 ? cementBags * cementBagCost : result.costs.cementCost;
+  const readyMixVolume = result.wetVolumeM3 * (1 + Math.max(0, input.settings.wastagePercent) / 100);
+  const total = input.costs.readyMixEnabled ? result.costs.readyMixCost : cementCost + result.costs.sandCost + result.costs.aggregateCost + result.costs.otherCost;
+  return { cementBags, cementBagCost, cementCost, readyMixVolume, total };
 }
 
 function wrapLines(text: string, width: number) {
@@ -276,6 +351,14 @@ function wrapLines(text: string, width: number) {
     if (current) lines.push(current);
     return lines;
   });
+}
+
+function chunkLines(lines: string[], size: number) {
+  const chunks: string[][] = [];
+  for (let index = 0; index < lines.length; index += size) {
+    chunks.push(lines.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function escapePdfText(value: string) {

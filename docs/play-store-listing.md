@@ -28,6 +28,8 @@ Key features:
 - Material cost calculator
 - Saved projects and locations
 - PDF estimate and order-list export
+- Combined project order list across saved locations
+- Ordered/not ordered location tracking
 - Local backup export/import between devices
 - Built-in help guide
 - Works offline after installation

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { AlertTriangle, Calculator, HelpCircle, Moon, Save, Share2, Sun } from 'lucide-react';
 import { cementDescriptions, defaultSettings, purposes, strengthDatabase } from '@/lib/concrete/data';
 import { calculateConcrete, formatRatio, getMixByStrength, recommendedForPurpose } from '@/lib/concrete/engine';
-import { downloadOrderPdf, downloadReportPdf, shareOrderPdf, shareReportPdf } from '@/lib/concrete/pdf';
+import { downloadOrderPdf, downloadProjectOrderPdf, downloadReportPdf, shareOrderPdf, shareProjectOrderPdf, shareReportPdf } from '@/lib/concrete/pdf';
 import { clearAllConcreteData, clearCustomMixes, clearHistory, clearProjects, createBackup, defaultCosts, loadCosts, loadCustomMixes, loadHistory, loadProjects, loadSettings, restoreBackup, saveCalculation, saveCosts, saveCustomMix, saveProject, saveSettings } from '@/lib/concrete/storage';
 import type { AdditiveUnit, BagSize, CalculationInput, CementType, ConcreteBackup, Costs, CustomMixPreset, Dimensions, LengthUnit, Purpose, SavedCalculation, SavedProject, Settings, Shape } from '@/lib/concrete/types';
 import { kgToPounds, round } from '@/lib/concrete/units';
@@ -141,6 +141,7 @@ export function ConcreteMixPro() {
   const cementOptions = useMemo(() => [...baseCementTypes.map((type) => settings.cementTypeNames[type]), ...savedCustomCements.map((cement) => cement.name)], [savedCustomCements, settings.cementTypeNames]);
   const selectedProject = useMemo(() => savedProjects.find((project) => project.id === selectedProjectId), [savedProjects, selectedProjectId]);
   const projectLocations = selectedProject?.locations ?? [];
+  const selectedLocation = useMemo(() => projectLocations.find((location) => location.id === selectedLocationId), [projectLocations, selectedLocationId]);
 
   const input: CalculationInput = useMemo(
     () => ({ projectName, locationInProject, notes, shape, unit, purpose, cementType, customCementName, strengthMpa, ratio, dimensions, settings, costs }),
@@ -446,6 +447,48 @@ export function ConcreteMixPro() {
     await shareOrderPdf(input, result);
   }
 
+  function saveProjectOrderList() {
+    if (!selectedProject || selectedProject.locations.length === 0) return;
+    downloadProjectOrderPdf(selectedProject);
+  }
+
+  async function shareProjectOrderList() {
+    if (!selectedProject || selectedProject.locations.length === 0) return;
+    await shareProjectOrderPdf(selectedProject);
+  }
+
+  function setCurrentLocationOrdered(ordered: boolean) {
+    if (!selectedProject || !selectedLocation) return;
+    const updatedLocation = {
+      ...selectedLocation,
+      orderedAt: ordered ? new Date().toISOString() : undefined,
+      updatedAt: new Date().toISOString()
+    };
+    const updatedProject = {
+      ...selectedProject,
+      locations: selectedProject.locations.map((location) => location.id === selectedLocation.id ? updatedLocation : location),
+      updatedAt: new Date().toISOString()
+    };
+    const saved = saveProject(updatedProject);
+    setSavedProjects(saved);
+  }
+
+  function setProjectOrdered(ordered: boolean) {
+    if (!selectedProject) return;
+    const now = new Date().toISOString();
+    const updatedProject = {
+      ...selectedProject,
+      locations: selectedProject.locations.map((location) => ({
+        ...location,
+        orderedAt: ordered ? now : undefined,
+        updatedAt: now
+      })),
+      updatedAt: now
+    };
+    const saved = saveProject(updatedProject);
+    setSavedProjects(saved);
+  }
+
   return (
     <main className="min-h-screen bg-[#f4f2ea] text-[#101418] dark:bg-[#121412] dark:text-[#f7f5ed]">
       <div className="mx-auto grid w-full max-w-7xl gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-5 lg:pt-5">
@@ -723,12 +766,60 @@ export function ConcreteMixPro() {
 
           <Panel title="Order List">
             <p className="text-sm font-semibold text-black/65 dark:text-white/70">
-              Creates a shopping/order-list PDF for the current project and location.
+              Create an order-list PDF for one location, or combine all saved locations under the selected project.
             </p>
+            {selectedProject && (
+              <div className="mt-3 rounded-md border border-black/10 bg-white p-3 text-sm font-semibold dark:border-white/10 dark:bg-[#121412]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-black">Project orders</span>
+                  <span>{projectLocations.filter((location) => location.orderedAt).length} / {projectLocations.length} ordered</span>
+                </div>
+                <div className="mt-2 max-h-40 space-y-2 overflow-auto">
+                  {projectLocations.map((location) => (
+                    <div key={location.id} className="flex items-center justify-between gap-2 rounded-md bg-black/5 px-2 py-2 dark:bg-white/10">
+                      <span className="truncate">{location.name}</span>
+                      <span className={`shrink-0 rounded px-2 py-1 text-xs font-black ${location.orderedAt ? 'bg-[#d9f0e5] text-[#1f7a5a] dark:bg-[#143326] dark:text-[#91e0bd]' : 'bg-[#fff4ea] text-[#8a3b1d] dark:bg-[#311f18] dark:text-[#ffbd91]'}`}>
+                        {location.orderedAt ? 'Ordered' : 'Not ordered'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <Action icon={<Save size={18} />} label="Save Order" onClick={saveOrderList} />
-              <Action icon={<Share2 size={18} />} label="Share Order" onClick={shareOrderList} />
+              <Action icon={<Save size={18} />} label="Save Location" onClick={saveOrderList} />
+              <Action icon={<Share2 size={18} />} label="Share Location" onClick={shareOrderList} />
             </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Action icon={<Save size={18} />} label="Save Project" onClick={saveProjectOrderList} />
+              <Action icon={<Share2 size={18} />} label="Share Project" onClick={shareProjectOrderList} />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] disabled:cursor-not-allowed disabled:bg-black/20"
+                onClick={() => setCurrentLocationOrdered(true)}
+                disabled={!selectedLocation}
+              >
+                Mark Ordered
+              </button>
+              <button
+                className="min-h-11 rounded-md border border-black/15 bg-white px-3 text-sm font-black text-[#101418] active:bg-black/5 disabled:cursor-not-allowed disabled:text-black/30 dark:border-white/15 dark:bg-[#121412] dark:text-white dark:active:bg-white/10 dark:disabled:text-white/30"
+                onClick={() => setCurrentLocationOrdered(false)}
+                disabled={!selectedLocation}
+              >
+                Mark Not Ordered
+              </button>
+            </div>
+            {selectedProject && projectLocations.length > 1 && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button className="min-h-11 rounded-md border border-[#1f7a5a]/40 bg-[#e5efe6] px-3 text-sm font-black text-[#1f7a5a] active:bg-[#d9f0e5] dark:bg-[#18261f]" onClick={() => setProjectOrdered(true)}>
+                  Mark All Ordered
+                </button>
+                <button className="min-h-11 rounded-md border border-[#b8562f]/40 bg-[#fff4ea] px-3 text-sm font-black text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91]" onClick={() => setProjectOrdered(false)}>
+                  Clear All Ordered
+                </button>
+              </div>
+            )}
           </Panel>
 
           {result.warnings.length > 0 && (
