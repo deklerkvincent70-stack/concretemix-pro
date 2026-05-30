@@ -155,6 +155,7 @@ export interface SavedProjectLocation {
   name: string;
   input: CalculationInput;
   orderedAt?: string;
+  completedAt?: string;
   updatedAt: string;
 }
 

@@ -493,6 +493,24 @@ export function ConcreteMixPro() {
     setSavedProjects(saved);
   }
 
+  function setLocationCompleted(locationId: string, completed: boolean) {
+    if (!selectedProject) return;
+    const locationToUpdate = selectedProject.locations.find((location) => location.id === locationId);
+    if (!locationToUpdate) return;
+    const updatedLocation = {
+      ...locationToUpdate,
+      completedAt: completed ? new Date().toISOString() : undefined,
+      updatedAt: new Date().toISOString()
+    };
+    const updatedProject = {
+      ...selectedProject,
+      locations: selectedProject.locations.map((location) => location.id === locationId ? updatedLocation : location),
+      updatedAt: new Date().toISOString()
+    };
+    const saved = saveProject(updatedProject);
+    setSavedProjects(saved);
+  }
+
   return (
     <main className="min-h-screen bg-[#f4f2ea] text-[#101418] dark:bg-[#121412] dark:text-[#f7f5ed]">
       <div className="mx-auto grid w-full max-w-7xl gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-5 lg:pt-5">
@@ -768,19 +786,19 @@ export function ConcreteMixPro() {
             </div>
           </Panel>
 
-          <Panel title="Order List">
+          <Panel title="Progress & Order Status">
             <p className="text-sm font-semibold text-black/65 dark:text-white/70">
-              Tick the saved locations to include on the order PDF. Click the red or green status dot to mark a location ordered or not ordered.
+              Tick saved locations for the order PDF. Use O for ordered and P for poured/completed.
             </p>
             {selectedProject && (
               <div className="mt-3 rounded-md border border-black/10 bg-white p-3 text-sm font-semibold dark:border-white/10 dark:bg-[#121412]">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-black">Project orders</span>
-                  <span>{projectLocations.filter((location) => location.orderedAt).length} / {projectLocations.length} ordered</span>
+                  <span className="font-black">Project progress</span>
+                  <span>{projectLocations.filter((location) => location.orderedAt).length} ordered / {projectLocations.filter((location) => location.completedAt).length} poured</span>
                 </div>
                 <div className="mt-2 max-h-40 space-y-2 overflow-auto">
                   {projectLocations.map((location) => (
-                    <div key={location.id} className="grid grid-cols-[22px_28px_minmax(0,1fr)] items-center gap-2 rounded-md bg-black/5 px-2 py-2 dark:bg-white/10">
+                    <div key={location.id} className="grid grid-cols-[22px_28px_28px_minmax(0,1fr)] items-center gap-2 rounded-md bg-black/5 px-2 py-2 dark:bg-white/10">
                       <input
                         className="h-5 w-5 accent-[#1f7a5a]"
                         type="checkbox"
@@ -789,7 +807,7 @@ export function ConcreteMixPro() {
                         onChange={() => toggleOrderLocation(location.id)}
                       />
                       <button
-                        className={`h-5 w-5 rounded-full border-2 ${location.orderedAt ? 'border-[#1f7a5a] bg-[#1f7a5a]' : 'border-[#b8562f] bg-[#b8562f]'}`}
+                        className={`h-6 w-6 rounded-full text-[10px] font-black text-white ${location.orderedAt ? 'bg-[#1f7a5a]' : 'bg-[#b8562f]'}`}
                         type="button"
                         onClick={(event) => {
                           event.preventDefault();
@@ -797,7 +815,21 @@ export function ConcreteMixPro() {
                         }}
                         aria-label={location.orderedAt ? 'Mark not ordered' : 'Mark ordered'}
                         title={location.orderedAt ? 'Ordered - click to mark not ordered' : 'Not ordered - click to mark ordered'}
-                      />
+                      >
+                        O
+                      </button>
+                      <button
+                        className={`h-6 w-6 rounded-full text-[10px] font-black text-white ${location.completedAt ? 'bg-[#1f7a5a]' : 'bg-[#b8562f]'}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setLocationCompleted(location.id, !location.completedAt);
+                        }}
+                        aria-label={location.completedAt ? 'Mark not poured' : 'Mark poured'}
+                        title={location.completedAt ? 'Poured - click to mark not poured' : 'Not poured - click to mark poured'}
+                      >
+                        P
+                      </button>
                       <span className="truncate">{location.name}</span>
                     </div>
                   ))}

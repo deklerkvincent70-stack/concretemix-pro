@@ -9,17 +9,17 @@ const pageHeight = 842;
 
 export function downloadReportPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createReportPdfBlob(input, result);
-  const fileName = `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`;
+  const fileName = `${calculationFileName(input, 'estimate')}.pdf`;
   void savePdf(blob, fileName, 'ConcreteMix Pro estimate');
 }
 
 export async function shareReportPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createReportPdfBlob(input, result);
-  const fileName = `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`;
+  const fileName = `${calculationFileName(input, 'estimate')}.pdf`;
 
   if (await shareNativePdf(blob, fileName, 'ConcreteMix Pro estimate')) return;
 
-  const file = new File([blob], `${safeFileName(input.projectName || 'concretemix-estimate')}.pdf`, { type: 'application/pdf' });
+  const file = new File([blob], fileName, { type: 'application/pdf' });
 
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ title: 'ConcreteMix Pro estimate', files: [file] });
@@ -31,13 +31,13 @@ export async function shareReportPdf(input: CalculationInput, result: Calculatio
 
 export function downloadOrderPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createOrderPdfBlob(input, result);
-  const fileName = `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`;
+  const fileName = `${calculationFileName(input, 'order')}.pdf`;
   void savePdf(blob, fileName, 'ConcreteMix Pro order list');
 }
 
 export async function shareOrderPdf(input: CalculationInput, result: CalculationResult) {
   const blob = createOrderPdfBlob(input, result);
-  const fileName = `${safeFileName(`${input.projectName || 'concretemix'}-order-list`)}.pdf`;
+  const fileName = `${calculationFileName(input, 'order')}.pdf`;
 
   if (await shareNativePdf(blob, fileName, 'ConcreteMix Pro order list')) return;
 
@@ -53,13 +53,13 @@ export async function shareOrderPdf(input: CalculationInput, result: Calculation
 
 export function downloadProjectOrderPdf(project: SavedProject) {
   const blob = createProjectOrderPdfBlob(project);
-  const fileName = `${safeFileName(`${project.name || 'concretemix'}-complete-order-list`)}.pdf`;
+  const fileName = `${projectOrderFileName(project)}.pdf`;
   void savePdf(blob, fileName, 'ConcreteMix Pro complete project order');
 }
 
 export async function shareProjectOrderPdf(project: SavedProject) {
   const blob = createProjectOrderPdfBlob(project);
-  const fileName = `${safeFileName(`${project.name || 'concretemix'}-complete-order-list`)}.pdf`;
+  const fileName = `${projectOrderFileName(project)}.pdf`;
 
   if (await shareNativePdf(blob, fileName, 'ConcreteMix Pro complete project order')) return;
 
@@ -292,6 +292,7 @@ function buildProjectOrderText(project: SavedProject) {
   });
   const total = locationSummaries.reduce((sum, item) => sum + item.order.total, 0);
   const ordered = locationSummaries.filter((item) => item.location.orderedAt).length;
+  const completed = locationSummaries.filter((item) => item.location.completedAt).length;
 
   return [
     'ConcreteMix Pro Project Order',
@@ -299,10 +300,11 @@ function buildProjectOrderText(project: SavedProject) {
     `Project: ${project.name || 'Concrete project'}`,
     `Locations on this order: ${project.locations.length}`,
     `Ordered: ${ordered} / ${project.locations.length}`,
+    `Poured/completed: ${completed} / ${project.locations.length}`,
     '',
     ...locationSummaries.flatMap(({ location, result, order }, index) => [
       `${index + 1}. ${location.name}`,
-      `Status: ${location.orderedAt ? `Ordered ${new Date(location.orderedAt).toLocaleDateString()}` : 'Not ordered'}`,
+      `Status: ${location.orderedAt ? `Ordered ${new Date(location.orderedAt).toLocaleDateString()}` : 'Not ordered'}; ${location.completedAt ? `Poured ${new Date(location.completedAt).toLocaleDateString()}` : 'Not poured'}`,
       `Purpose: ${location.input.purpose}`,
       `Supply: ${location.input.costs.readyMixEnabled ? 'Ready-mix delivered concrete' : 'Site mix materials'}`,
       `Wet volume: ${round(result.wetVolumeM3, 3)} m3`,
@@ -367,6 +369,32 @@ function escapePdfText(value: string) {
 
 function safeFileName(value: string) {
   return value.replace(/[^a-z0-9-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'concretemix-estimate';
+}
+
+function calculationFileName(input: CalculationInput, suffix: string) {
+  return safeFileName([
+    input.projectName || 'concretemix',
+    input.locationInProject || 'location',
+    suffix,
+    shortDate()
+  ].join('-'));
+}
+
+function projectOrderFileName(project: SavedProject) {
+  const locationPart = project.locations.length === 1 ? project.locations[0]?.name : 'selected-locations';
+  return safeFileName([
+    project.name || 'concretemix',
+    locationPart || 'project',
+    'order',
+    shortDate()
+  ].join('-'));
+}
+
+function shortDate(date = new Date()) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}${month}${year}`;
 }
 
 function formatMoney(value: number) {

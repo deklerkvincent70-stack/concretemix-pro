@@ -69,7 +69,7 @@ const sections = [
     ]
   },
   {
-    title: 'PDF Save, Share and Order Lists',
+    title: 'PDF Save, Share and Progress',
     items: [
       'Save creates a PDF estimate for the current calculation.',
       'Share opens the device share options where supported.',
@@ -77,7 +77,7 @@ const sections = [
       'Share Order shares the same selected-location order PDF.',
       'If no saved project is selected, Save Order and Share Order use the current location only.',
       'Tick boxes choose which saved locations appear on the order PDF.',
-      'Red and green status dots show not ordered or ordered. Click the dot to change the order status.',
+      'O marks a location ordered and P marks it poured/completed. Red means not done, green means done.',
       'On Android, the app uses the native share sheet so you can choose apps such as Files, Gmail, WhatsApp or Quick Share.'
     ]
   },
