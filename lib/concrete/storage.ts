@@ -1,5 +1,5 @@
 import { defaultSettings } from './data';
-import type { CalculationInput, CementType, Costs, CustomMixPreset, SavedCalculation, SavedProject, Settings } from './types';
+import type { CalculationInput, CementType, ConcreteBackup, Costs, CustomMixPreset, SavedCalculation, SavedProject, Settings } from './types';
 
 const SETTINGS_KEY = 'concretemix:settings';
 const COSTS_KEY = 'concretemix:costs';
@@ -146,6 +146,30 @@ export function clearAllConcreteData() {
   [SETTINGS_KEY, COSTS_KEY, HISTORY_KEY, CUSTOM_MIXES_KEY, PROJECTS_KEY].forEach((key) => {
     window.localStorage.removeItem(key);
   });
+}
+
+export function createBackup(): ConcreteBackup {
+  return {
+    app: 'ConcreteMix Pro',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: loadSettings(),
+    costs: loadCosts(),
+    history: loadHistory(),
+    customMixes: loadCustomMixes(),
+    projects: loadProjects()
+  };
+}
+
+export function restoreBackup(backup: ConcreteBackup) {
+  if (backup.app !== 'ConcreteMix Pro' || backup.version !== 1) {
+    throw new Error('This is not a valid ConcreteMix Pro backup file.');
+  }
+  writeJson(SETTINGS_KEY, backup.settings);
+  writeJson(COSTS_KEY, backup.costs);
+  writeJson(HISTORY_KEY, backup.history);
+  writeJson(CUSTOM_MIXES_KEY, backup.customMixes);
+  writeJson(PROJECTS_KEY, backup.projects);
 }
 
 function readJson<T>(key: string, fallback: T): T {

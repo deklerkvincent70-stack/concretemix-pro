@@ -173,3 +173,14 @@ export interface CustomCementPreset {
   costPerBag: number;
   updatedAt: string;
 }
+
+export interface ConcreteBackup {
+  app: 'ConcreteMix Pro';
+  version: 1;
+  exportedAt: string;
+  settings: Settings;
+  costs: Costs;
+  history: SavedCalculation[];
+  customMixes: CustomMixPreset[];
+  projects: SavedProject[];
+}

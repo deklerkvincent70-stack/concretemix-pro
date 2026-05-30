@@ -6,8 +6,8 @@ import { AlertTriangle, Calculator, Moon, Save, Share2, Sun } from 'lucide-react
 import { cementDescriptions, defaultSettings, purposes, strengthDatabase } from '@/lib/concrete/data';
 import { calculateConcrete, formatRatio, getMixByStrength, recommendedForPurpose } from '@/lib/concrete/engine';
 import { downloadOrderPdf, downloadReportPdf, shareOrderPdf, shareReportPdf } from '@/lib/concrete/pdf';
-import { clearAllConcreteData, clearCustomMixes, clearHistory, clearProjects, defaultCosts, loadCosts, loadCustomMixes, loadHistory, loadProjects, loadSettings, saveCalculation, saveCosts, saveCustomMix, saveProject, saveSettings } from '@/lib/concrete/storage';
-import type { AdditiveUnit, BagSize, CalculationInput, CementType, Costs, CustomMixPreset, Dimensions, LengthUnit, Purpose, SavedCalculation, SavedProject, Settings, Shape } from '@/lib/concrete/types';
+import { clearAllConcreteData, clearCustomMixes, clearHistory, clearProjects, createBackup, defaultCosts, loadCosts, loadCustomMixes, loadHistory, loadProjects, loadSettings, restoreBackup, saveCalculation, saveCosts, saveCustomMix, saveProject, saveSettings } from '@/lib/concrete/storage';
+import type { AdditiveUnit, BagSize, CalculationInput, CementType, ConcreteBackup, Costs, CustomMixPreset, Dimensions, LengthUnit, Purpose, SavedCalculation, SavedProject, Settings, Shape } from '@/lib/concrete/types';
 import { kgToPounds, round } from '@/lib/concrete/units';
 
 const shapes: { id: Shape; label: string }[] = [
@@ -695,7 +695,7 @@ export function ConcreteMixPro() {
           </Panel>
 
           <Panel title="Settings" action={<button className="text-sm font-black text-[#1f7a5a]" onClick={() => setOpenSettings((value) => !value)}>{openSettings ? 'Hide' : 'Edit'}</button>}>
-            {openSettings && <SettingsEditor settings={settings} setSettings={setSettings} setUnit={setUnit} costs={costs} setCosts={setCosts} currency={currency} onClearSelected={clearSelectedData} />}
+            {openSettings && <SettingsEditor settings={settings} setSettings={setSettings} setUnit={setUnit} costs={costs} setCosts={setCosts} currency={currency} onClearSelected={clearSelectedData} onBackupRestored={() => window.location.reload()} />}
           </Panel>
         </div>
 
@@ -808,7 +808,8 @@ function SettingsEditor({
   costs,
   setCosts,
   currency,
-  onClearSelected
+  onClearSelected,
+  onBackupRestored
 }: {
   settings: Settings;
   setSettings: (next: Settings) => void;
@@ -817,6 +818,7 @@ function SettingsEditor({
   setCosts: (next: Costs) => void;
   currency: string;
   onClearSelected: (options: ClearDataOptions) => void;
+  onBackupRestored: () => void;
 }) {
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings({ ...settings, [key]: value });
   const [clearOptions, setClearOptions] = useState<ClearDataOptions>({
@@ -875,6 +877,38 @@ function SettingsEditor({
       cementPerBagByType: { ...costs.cementPerBagByType, Custom: 0 }
     });
     update('cementTypeNames', { ...settings.cementTypeNames, Custom: 'Custom cement' });
+  };
+  const exportBackup = () => {
+    const backup = createBackup();
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    anchor.href = url;
+    anchor.download = `concretemix-pro-backup-${date}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+  const importBackup = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const backup = JSON.parse(await file.text()) as ConcreteBackup;
+        const confirmed = window.confirm('Import this ConcreteMix Pro backup? This will replace saved projects, settings, costs and custom mixes on this device.');
+        if (!confirmed) return;
+        restoreBackup(backup);
+        onBackupRestored();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'Could not import this backup file.');
+      }
+    };
+    input.click();
   };
   return (
     <div className="mt-3 space-y-4">
@@ -951,6 +985,16 @@ function SettingsEditor({
       </SettingsGroup>
 
       <SettingsGroup title="Data" open={openGroups.Data} onToggle={() => toggleGroup('Data')}>
+        <div className="sm:col-span-2 rounded-md border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-[#121412]">
+          <p className="text-sm font-black">Local backup transfer</p>
+          <p className="mt-1 text-sm font-semibold text-black/60 dark:text-white/65">
+            Export a backup on one device, move the JSON file by USB, email, WhatsApp or Quick Share, then import it on another device. No cloud account is used.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75]" onClick={exportBackup}>Export Backup</button>
+            <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75]" onClick={importBackup}>Import Backup</button>
+          </div>
+        </div>
         <ClearCheck label="Saved projects" checked={clearOptions.projects} onChange={(value) => updateClearOption('projects', value)} />
         <ClearCheck label="Current location in project" checked={clearOptions.currentLocation} onChange={(value) => updateClearOption('currentLocation', value)} />
         <ClearCheck label="Saved calculations" checked={clearOptions.calculations} onChange={(value) => updateClearOption('calculations', value)} />
