@@ -63,7 +63,8 @@ export default function PrivacyPolicyPage() {
         <section className="mt-6 space-y-3">
           <h2 className="text-lg font-black">Contact</h2>
           <p>
-            For privacy questions about ConcreteMix Pro, contact: <a className="font-black text-[#1f7a5a]" href="mailto:vincent@vindk.com">vincent@vindk.com</a>
+            If you have any suggestions or requests that you would like to see on this calculator, or have
+            any privacy questions about ConcreteMix Pro, contact: <a className="font-black text-[#1f7a5a]" href="mailto:vincent@vindk.com">vincent@vindk.com</a>
           </p>
         </section>
       </article>
