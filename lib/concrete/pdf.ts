@@ -294,10 +294,10 @@ function buildProjectOrderText(project: SavedProject) {
   const ordered = locationSummaries.filter((item) => item.location.orderedAt).length;
 
   return [
-    'ConcreteMix Pro Complete Project Order',
+    'ConcreteMix Pro Project Order',
     `Date: ${new Date().toLocaleDateString()}`,
     `Project: ${project.name || 'Concrete project'}`,
-    `Locations: ${project.locations.length}`,
+    `Locations on this order: ${project.locations.length}`,
     `Ordered: ${ordered} / ${project.locations.length}`,
     '',
     ...locationSummaries.flatMap(({ location, result, order }, index) => [

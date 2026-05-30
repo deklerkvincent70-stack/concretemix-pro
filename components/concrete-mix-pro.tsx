@@ -68,6 +68,7 @@ export function ConcreteMixPro() {
   const [manualMix, setManualMix] = useState(false);
   const [manualRatio, setManualRatio] = useState<[number, number, number]>([1, 1.5, 3]);
   const [openSettings, setOpenSettings] = useState(false);
+  const [selectedOrderLocationIds, setSelectedOrderLocationIds] = useState<string[]>([]);
 
   useEffect(() => {
     const storedSettings = loadSettings();
@@ -141,7 +142,14 @@ export function ConcreteMixPro() {
   const cementOptions = useMemo(() => [...baseCementTypes.map((type) => settings.cementTypeNames[type]), ...savedCustomCements.map((cement) => cement.name)], [savedCustomCements, settings.cementTypeNames]);
   const selectedProject = useMemo(() => savedProjects.find((project) => project.id === selectedProjectId), [savedProjects, selectedProjectId]);
   const projectLocations = selectedProject?.locations ?? [];
-  const selectedLocation = useMemo(() => projectLocations.find((location) => location.id === selectedLocationId), [projectLocations, selectedLocationId]);
+
+  useEffect(() => {
+    setSelectedOrderLocationIds((current) => {
+      const availableIds = projectLocations.map((location) => location.id);
+      const keptIds = current.filter((id) => availableIds.includes(id));
+      return keptIds.length > 0 ? keptIds : availableIds;
+    });
+  }, [selectedProjectId, projectLocations.length]);
 
   const input: CalculationInput = useMemo(
     () => ({ projectName, locationInProject, notes, shape, unit, purpose, cementType, customCementName, strengthMpa, ratio, dimensions, settings, costs }),
@@ -439,51 +447,47 @@ export function ConcreteMixPro() {
     await shareReportPdf(input, result);
   }
 
+  function getSelectedOrderProject() {
+    if (!selectedProject) return null;
+    const selectedLocations = selectedProject.locations.filter((location) => selectedOrderLocationIds.includes(location.id));
+    return selectedLocations.length > 0 ? { ...selectedProject, locations: selectedLocations } : null;
+  }
+
   function saveOrderList() {
+    const orderProject = getSelectedOrderProject();
+    if (orderProject) {
+      downloadProjectOrderPdf(orderProject);
+      return;
+    }
     downloadOrderPdf(input, result);
   }
 
   async function shareOrderList() {
+    const orderProject = getSelectedOrderProject();
+    if (orderProject) {
+      await shareProjectOrderPdf(orderProject);
+      return;
+    }
     await shareOrderPdf(input, result);
   }
 
-  function saveProjectOrderList() {
-    if (!selectedProject || selectedProject.locations.length === 0) return;
-    downloadProjectOrderPdf(selectedProject);
+  function toggleOrderLocation(locationId: string) {
+    setSelectedOrderLocationIds((current) => current.includes(locationId) ? current.filter((id) => id !== locationId) : [...current, locationId]);
   }
 
-  async function shareProjectOrderList() {
-    if (!selectedProject || selectedProject.locations.length === 0) return;
-    await shareProjectOrderPdf(selectedProject);
-  }
-
-  function setCurrentLocationOrdered(ordered: boolean) {
-    if (!selectedProject || !selectedLocation) return;
+  function setLocationOrdered(locationId: string, ordered: boolean) {
+    if (!selectedProject) return;
+    const locationToUpdate = selectedProject.locations.find((location) => location.id === locationId);
+    if (!locationToUpdate) return;
     const updatedLocation = {
-      ...selectedLocation,
+      ...locationToUpdate,
       orderedAt: ordered ? new Date().toISOString() : undefined,
       updatedAt: new Date().toISOString()
     };
     const updatedProject = {
       ...selectedProject,
-      locations: selectedProject.locations.map((location) => location.id === selectedLocation.id ? updatedLocation : location),
+      locations: selectedProject.locations.map((location) => location.id === locationId ? updatedLocation : location),
       updatedAt: new Date().toISOString()
-    };
-    const saved = saveProject(updatedProject);
-    setSavedProjects(saved);
-  }
-
-  function setProjectOrdered(ordered: boolean) {
-    if (!selectedProject) return;
-    const now = new Date().toISOString();
-    const updatedProject = {
-      ...selectedProject,
-      locations: selectedProject.locations.map((location) => ({
-        ...location,
-        orderedAt: ordered ? now : undefined,
-        updatedAt: now
-      })),
-      updatedAt: now
     };
     const saved = saveProject(updatedProject);
     setSavedProjects(saved);
@@ -766,7 +770,7 @@ export function ConcreteMixPro() {
 
           <Panel title="Order List">
             <p className="text-sm font-semibold text-black/65 dark:text-white/70">
-              Create an order-list PDF for one location, or combine all saved locations under the selected project.
+              Tick the saved locations to include on the order PDF. Click the red or green status dot to mark a location ordered or not ordered.
             </p>
             {selectedProject && (
               <div className="mt-3 rounded-md border border-black/10 bg-white p-3 text-sm font-semibold dark:border-white/10 dark:bg-[#121412]">
@@ -776,50 +780,34 @@ export function ConcreteMixPro() {
                 </div>
                 <div className="mt-2 max-h-40 space-y-2 overflow-auto">
                   {projectLocations.map((location) => (
-                    <div key={location.id} className="flex items-center justify-between gap-2 rounded-md bg-black/5 px-2 py-2 dark:bg-white/10">
+                    <div key={location.id} className="grid grid-cols-[22px_28px_minmax(0,1fr)] items-center gap-2 rounded-md bg-black/5 px-2 py-2 dark:bg-white/10">
+                      <input
+                        className="h-5 w-5 accent-[#1f7a5a]"
+                        type="checkbox"
+                        aria-label={`Include ${location.name} on order PDF`}
+                        checked={selectedOrderLocationIds.includes(location.id)}
+                        onChange={() => toggleOrderLocation(location.id)}
+                      />
+                      <button
+                        className={`h-5 w-5 rounded-full border-2 ${location.orderedAt ? 'border-[#1f7a5a] bg-[#1f7a5a]' : 'border-[#b8562f] bg-[#b8562f]'}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setLocationOrdered(location.id, !location.orderedAt);
+                        }}
+                        aria-label={location.orderedAt ? 'Mark not ordered' : 'Mark ordered'}
+                        title={location.orderedAt ? 'Ordered - click to mark not ordered' : 'Not ordered - click to mark ordered'}
+                      />
                       <span className="truncate">{location.name}</span>
-                      <span className={`shrink-0 rounded px-2 py-1 text-xs font-black ${location.orderedAt ? 'bg-[#d9f0e5] text-[#1f7a5a] dark:bg-[#143326] dark:text-[#91e0bd]' : 'bg-[#fff4ea] text-[#8a3b1d] dark:bg-[#311f18] dark:text-[#ffbd91]'}`}>
-                        {location.orderedAt ? 'Ordered' : 'Not ordered'}
-                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <Action icon={<Save size={18} />} label="Save Location" onClick={saveOrderList} />
-              <Action icon={<Share2 size={18} />} label="Share Location" onClick={shareOrderList} />
+              <Action icon={<Save size={18} />} label="Save Order" onClick={saveOrderList} />
+              <Action icon={<Share2 size={18} />} label="Share Order" onClick={shareOrderList} />
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <Action icon={<Save size={18} />} label="Save Project" onClick={saveProjectOrderList} />
-              <Action icon={<Share2 size={18} />} label="Share Project" onClick={shareProjectOrderList} />
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] disabled:cursor-not-allowed disabled:bg-black/20"
-                onClick={() => setCurrentLocationOrdered(true)}
-                disabled={!selectedLocation}
-              >
-                Mark Ordered
-              </button>
-              <button
-                className="min-h-11 rounded-md border border-black/15 bg-white px-3 text-sm font-black text-[#101418] active:bg-black/5 disabled:cursor-not-allowed disabled:text-black/30 dark:border-white/15 dark:bg-[#121412] dark:text-white dark:active:bg-white/10 dark:disabled:text-white/30"
-                onClick={() => setCurrentLocationOrdered(false)}
-                disabled={!selectedLocation}
-              >
-                Mark Not Ordered
-              </button>
-            </div>
-            {selectedProject && projectLocations.length > 1 && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button className="min-h-11 rounded-md border border-[#1f7a5a]/40 bg-[#e5efe6] px-3 text-sm font-black text-[#1f7a5a] active:bg-[#d9f0e5] dark:bg-[#18261f]" onClick={() => setProjectOrdered(true)}>
-                  Mark All Ordered
-                </button>
-                <button className="min-h-11 rounded-md border border-[#b8562f]/40 bg-[#fff4ea] px-3 text-sm font-black text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91]" onClick={() => setProjectOrdered(false)}>
-                  Clear All Ordered
-                </button>
-              </div>
-            )}
           </Panel>
 
           {result.warnings.length > 0 && (
