@@ -466,7 +466,7 @@ export function ConcreteMixPro() {
         </header>
 
         <div className="space-y-3 sm:space-y-4">
-          <Panel title="Main Calculator" description="Save a project name first, add and save a location, then enter the pour size. Calculations update instantly. Use Settings at the bottom for material, cost and global values.">
+          <Panel title="Main Calculator" description="Type a project name and press Save first. Then add a location, save it, and enter the pour size. Calculations update instantly. Use Settings at the bottom for material, cost and global values.">
             <div className="grid grid-cols-[minmax(0,1fr)_82px] gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_90px] sm:gap-3">
               <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_44px] gap-2 sm:col-span-1">
                 {addingProject || savedProjects.length === 0 ? (
@@ -487,7 +487,7 @@ export function ConcreteMixPro() {
               </div>
               <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_44px] gap-2 sm:col-span-1">
                 {addingLocation || projectLocations.length === 0 ? (
-                  <Field label="Location in project" value={locationInProject} onChange={handleLocationNameChange} disabled={!selectedProjectId} />
+                  <Field label="Location in project" value={locationInProject} onChange={handleLocationNameChange} disabled={!selectedProjectId && !projectName.trim()} />
                 ) : (
                   <Select
                     label="Location in project"
@@ -512,8 +512,8 @@ export function ConcreteMixPro() {
             </div>
           </Panel>
 
-          <Panel title="Mix Recommendation" description="Choose the concrete purpose, then adjust strength or ratio if needed.">
-            <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.6fr)_160px]">
+          <Panel title="Mix for This Pour" description="Choose the purpose, strength and supply for this project location. Strength and ratio are saved with each location because they may change between pours.">
+            <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.6fr)_130px_160px]">
               <Select
                 label="Purpose of Concrete"
                 value={purposeChoice}
@@ -585,6 +585,12 @@ export function ConcreteMixPro() {
                 value={costs.additivePercentOfWater}
                 onChange={(value) => setCosts({ ...costs, additivePercentOfWater: value })}
               />
+              <Select
+                label="Supply"
+                value={costs.readyMixEnabled ? 'Ready-mix' : 'Site mix'}
+                onChange={(value) => setCosts({ ...costs, readyMixEnabled: value === 'Ready-mix' })}
+                options={['Site mix', 'Ready-mix']}
+              />
             </div>
             {isCustomMix && (
               <div className="mt-3">
@@ -606,7 +612,7 @@ export function ConcreteMixPro() {
                   <p className="font-black">
                     {isCustomMix ? customPurposeName : selectedMix.label} / {isCustomMix ? `${formatStrength(approximateCustomStrength?.strengthMpa ?? strengthMpa, settings.strengthUnit)} approximate custom` : formatStrength(strengthMpa, settings.strengthUnit)}
                   </p>
-                  <p className="font-bold">Mix ratio: {formatRatio(ratio)}</p>
+                  <p className="font-bold">Mix ratio: {costs.readyMixEnabled ? 'Ready-mix by volume' : formatRatio(ratio)}</p>
                   <p className="text-xs font-black uppercase text-black/55 dark:text-white/55">Cement : Sand : Stone</p>
                   <p className="font-bold">Water: {waterDisplay.value} {waterDisplay.unit} at w/c {settings.waterCementRatio}</p>
                   {approximateCustomStrength && (
@@ -614,14 +620,14 @@ export function ConcreteMixPro() {
                       Approximate ratio only: similar to about {formatStrength(approximateCustomStrength.strengthMpa, settings.strengthUnit)}. Not substantiated. Custom mixes depend on water, aggregate, cement, additives, curing and site practice.
                     </p>
                   )}
-                  <p className="text-black/70 dark:text-white/70">{isCustomMix ? 'User-defined concrete mix.' : selectedMix.typicalUse}</p>
+                  <p className="text-black/70 dark:text-white/70">{costs.readyMixEnabled ? 'Ready-mix mode uses the calculated wet volume plus wastage for delivered concrete cost.' : isCustomMix ? 'User-defined concrete mix.' : selectedMix.typicalUse}</p>
                   <p className="text-black/70 dark:text-white/70">
                     {customCementName} - {cementType === 'Custom' ? 'User-defined cement, no Type I-V technical description applied.' : cementDescriptions[cementType]}
                   </p>
                   {!isCustomMix && !selectedMix.ratio && <p className="font-bold text-[#b8562f]">Uses a provisional 1 : 1 : 2 quantity estimate until a verified design mix is entered.</p>}
                 </div>
                 <button className="min-h-11 rounded-md bg-[#1f7a5a] px-4 font-black text-white" onClick={() => setManualMix((value) => !value)}>
-                  {manualMix ? 'Manual' : 'Auto'}
+                  {manualMix ? 'Done' : 'Edit ratio'}
                 </button>
               </div>
               {manualMix && (
@@ -669,12 +675,23 @@ export function ConcreteMixPro() {
 
           <Panel title="Costs">
             <div className="grid grid-cols-2 gap-2 text-center text-sm font-bold sm:grid-cols-4">
-              <SummaryPill label="Cement" value={`${currency}${formatMoney(result.costs.cementCost)}`} />
-              <SummaryPill label="Sand" value={`${currency}${formatMoney(result.costs.sandCost)}`} />
-              <SummaryPill label="Stone" value={`${currency}${formatMoney(result.costs.aggregateCost)}`} />
-              <SummaryPill label={costs.otherName || 'Additive'} value={`${currency}${formatMoney(result.costs.otherCost)}`} />
+              {costs.readyMixEnabled ? (
+                <>
+                  <SummaryPill label="Ready-mix" value={`${currency}${formatMoney(result.costs.readyMixCost)}`} />
+                  <SummaryPill label="Volume" value={`${round(result.wetVolumeM3 * (1 + settings.wastagePercent / 100), 2)} m3`} />
+                  <SummaryPill label="Rate" value={`${currency}${formatMoney(costs.readyMixPerM3)} / m3`} />
+                  <SummaryPill label="Wastage" value={`${settings.wastagePercent}%`} />
+                </>
+              ) : (
+                <>
+                  <SummaryPill label="Cement" value={`${currency}${formatMoney(result.costs.cementCost)}`} />
+                  <SummaryPill label="Sand" value={`${currency}${formatMoney(result.costs.sandCost)}`} />
+                  <SummaryPill label="Stone" value={`${currency}${formatMoney(result.costs.aggregateCost)}`} />
+                  <SummaryPill label={costs.otherName || 'Additive'} value={`${currency}${formatMoney(result.costs.otherCost)}`} />
+                </>
+              )}
             </div>
-            <p className="mt-3 text-sm font-semibold text-black/65 dark:text-white/70">Cost rates are set in Settings so they stay saved for the next calculation.</p>
+            <p className="mt-3 text-sm font-semibold text-black/65 dark:text-white/70">Cost rates are set in Settings so they stay saved for the next calculation. Ready-mix mode prices delivered concrete by volume.</p>
           </Panel>
 
           <Panel title="Settings" action={<button className="text-sm font-black text-[#1f7a5a]" onClick={() => setOpenSettings((value) => !value)}>{openSettings ? 'Hide' : 'Edit'}</button>}>
@@ -919,6 +936,7 @@ function SettingsEditor({
         </div>
         <NumberField label="Sand / m3" value={costs.sandPerM3} onChange={(value) => setCosts({ ...costs, sandPerM3: value })} prefix={currency} money />
         <NumberField label="Stone / m3" value={costs.aggregatePerM3} onChange={(value) => setCosts({ ...costs, aggregatePerM3: value })} prefix={currency} money />
+        <NumberField label="Ready-mix / m3" value={costs.readyMixPerM3} onChange={(value) => setCosts({ ...costs, readyMixPerM3: value })} prefix={currency} money />
         <Field label="Additive name" value={costs.otherName} onChange={(value) => setCosts({ ...costs, otherName: value })} />
         <NumberField label="Additive cost / container" value={costs.additiveContainerCost} onChange={(value) => setCosts({ ...costs, additiveContainerCost: value })} prefix={currency} money />
         <NumberField label="Container size" value={costs.additiveContainerSize} onChange={(value) => setCosts({ ...costs, additiveContainerSize: value })} />

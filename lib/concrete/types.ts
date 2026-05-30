@@ -64,6 +64,8 @@ export interface Costs {
   transport: number;
   otherName: string;
   otherCost: number;
+  readyMixEnabled: boolean;
+  readyMixPerM3: number;
   additivePercentOfWater: number;
   additiveContainerCost: number;
   additiveContainerSize: number;
@@ -115,6 +117,7 @@ export interface CostOutput {
   sandCost: number;
   aggregateCost: number;
   otherCost: number;
+  readyMixCost: number;
   materialSubtotal: number;
   laborSubtotal: number;
   total: number;

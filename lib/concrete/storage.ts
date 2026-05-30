@@ -26,6 +26,8 @@ export const defaultCosts: Costs = {
   transport: 0,
   otherName: 'Additive',
   otherCost: 0,
+  readyMixEnabled: false,
+  readyMixPerM3: 0,
   additivePercentOfWater: 0,
   additiveContainerCost: 0,
   additiveContainerSize: 1,

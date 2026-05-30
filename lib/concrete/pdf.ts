@@ -166,6 +166,7 @@ function buildReportText(input: CalculationInput, result: CalculationResult) {
     `Location: ${input.locationInProject || 'Not specified'}`,
     `Purpose: ${input.purpose}`,
     `Shape: ${input.shape}`,
+    `Supply: ${input.costs.readyMixEnabled ? 'Ready-mix delivered concrete' : 'Site mix materials'}`,
     '',
     'Dimensions',
     `Unit: ${input.unit}`,
@@ -177,7 +178,7 @@ function buildReportText(input: CalculationInput, result: CalculationResult) {
     '',
     'Mix',
     `Strength: ${round(input.strengthMpa, 1)} MPa`,
-    `Ratio: ${formatRatio(input.ratio)}`,
+    `Ratio: ${input.costs.readyMixEnabled ? 'Ready-mix by volume' : formatRatio(input.ratio)}`,
     `Cement: ${input.customCementName} - ${cementDescription}`,
     `Water-cement ratio: ${input.settings.waterCementRatio}`,
     `Wastage: ${input.settings.wastagePercent}%`,
@@ -190,10 +191,15 @@ function buildReportText(input: CalculationInput, result: CalculationResult) {
     `${input.costs.otherName || 'Additive'}: ${round(result.materials.additiveLiters, 3)} L / ${round(result.materials.additiveContainers, 2)} containers`,
     '',
     'Costs',
-    `Cement: ${currency}${formatMoney(result.costs.cementCost)}`,
-    `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
-    `Stone: ${currency}${formatMoney(result.costs.aggregateCost)}`,
-    `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`,
+    ...(input.costs.readyMixEnabled ? [
+      `Ready-mix: ${currency}${formatMoney(result.costs.readyMixCost)}`,
+      `Ready-mix rate: ${currency}${formatMoney(input.costs.readyMixPerM3)} per m3`
+    ] : [
+      `Cement: ${currency}${formatMoney(result.costs.cementCost)}`,
+      `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
+      `Stone: ${currency}${formatMoney(result.costs.aggregateCost)}`,
+      `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`
+    ]),
     `Total: ${currency}${formatMoney(result.costs.total)}`,
     `Cost per m3: ${currency}${formatMoney(result.costs.costPerM3)}`,
     '',
@@ -207,7 +213,8 @@ function buildOrderText(input: CalculationInput, result: CalculationResult) {
   const orderCementBags = Math.ceil(result.materials.cementBags);
   const cementBagCost = getSelectedCementBagCost(input);
   const orderCementCost = cementBagCost > 0 ? orderCementBags * cementBagCost : result.costs.cementCost;
-  const orderTotal = orderCementCost + result.costs.sandCost + result.costs.aggregateCost + result.costs.otherCost;
+  const readyMixVolume = result.wetVolumeM3 * (1 + Math.max(0, input.settings.wastagePercent) / 100);
+  const orderTotal = input.costs.readyMixEnabled ? result.costs.readyMixCost : orderCementCost + result.costs.sandCost + result.costs.aggregateCost + result.costs.otherCost;
   return [
     'ConcreteMix Pro Shopping / Order List',
     `Date: ${new Date().toLocaleDateString()}`,
@@ -217,23 +224,32 @@ function buildOrderText(input: CalculationInput, result: CalculationResult) {
     'Concrete Required',
     `Purpose: ${input.purpose}`,
     `Shape: ${input.shape}`,
+    `Supply: ${input.costs.readyMixEnabled ? 'Ready-mix delivered concrete' : 'Site mix materials'}`,
     `Wet volume: ${round(result.wetVolumeM3, 3)} m3`,
     `Dry volume: ${round(result.dryVolumeM3, 3)} m3`,
     `Mix ratio: ${formatRatio(input.ratio)}`,
     `Wastage included: ${input.settings.wastagePercent}%`,
     '',
     'Order Items',
-    `[ ] Cement - ${input.customCementName}: ${orderCementBags} bags (${round(result.materials.cementKg, 1)} kg calculated)`,
-    `[ ] Sand: ${round(result.materials.sandM3, 3)} m3 (${round(result.materials.sandKg, 0)} kg)`,
-    `[ ] Stone / Aggregate: ${round(result.materials.aggregateM3, 3)} m3 (${round(result.materials.aggregateKg, 0)} kg)`,
-    `[ ] Water: ${round(result.materials.waterLiters, 1)} L`,
-    `[ ] ${input.costs.otherName || 'Additive'}: ${round(result.materials.additiveLiters, 3)} L (${round(result.materials.additiveContainers, 2)} containers)`,
+    ...(input.costs.readyMixEnabled ? [
+      `[ ] Ready-mix delivered concrete: ${round(readyMixVolume, 2)} m3 including wastage`
+    ] : [
+      `[ ] Cement - ${input.customCementName}: ${orderCementBags} bags (${round(result.materials.cementKg, 1)} kg calculated)`,
+      `[ ] Sand: ${round(result.materials.sandM3, 3)} m3 (${round(result.materials.sandKg, 0)} kg)`,
+      `[ ] Stone / Aggregate: ${round(result.materials.aggregateM3, 3)} m3 (${round(result.materials.aggregateKg, 0)} kg)`,
+      `[ ] Water: ${round(result.materials.waterLiters, 1)} L`,
+      `[ ] ${input.costs.otherName || 'Additive'}: ${round(result.materials.additiveLiters, 3)} L (${round(result.materials.additiveContainers, 2)} containers)`
+    ]),
     '',
     'Estimated Costs',
-    `Cement: ${currency}${formatMoney(orderCementCost)} (${orderCementBags} bags x ${currency}${formatMoney(cementBagCost)})`,
-    `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
-    `Stone / Aggregate: ${currency}${formatMoney(result.costs.aggregateCost)}`,
-    `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`,
+    ...(input.costs.readyMixEnabled ? [
+      `Ready-mix: ${currency}${formatMoney(result.costs.readyMixCost)} (${round(readyMixVolume, 2)} m3 x ${currency}${formatMoney(input.costs.readyMixPerM3)})`
+    ] : [
+      `Cement: ${currency}${formatMoney(orderCementCost)} (${orderCementBags} bags x ${currency}${formatMoney(cementBagCost)})`,
+      `Sand: ${currency}${formatMoney(result.costs.sandCost)}`,
+      `Stone / Aggregate: ${currency}${formatMoney(result.costs.aggregateCost)}`,
+      `${input.costs.otherName || 'Additive'}: ${currency}${formatMoney(result.costs.otherCost)}`
+    ]),
     `Total material estimate: ${currency}${formatMoney(orderTotal)}`,
     '',
     'Notes',

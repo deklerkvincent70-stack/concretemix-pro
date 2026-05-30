@@ -39,7 +39,9 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
   const sandCost = sandM3 * safeNumber(input.costs.sandPerM3);
   const aggregateCost = aggregateM3 * safeNumber(input.costs.aggregatePerM3);
   const otherCost = additiveContainers * safeNumber(input.costs.additiveContainerCost);
-  const materialSubtotal = cementCost + sandCost + aggregateCost + otherCost;
+  const readyMixVolumeM3 = wetVolumeM3 * wastageMultiplier;
+  const readyMixCost = input.costs.readyMixEnabled ? readyMixVolumeM3 * safeNumber(input.costs.readyMixPerM3) : 0;
+  const materialSubtotal = input.costs.readyMixEnabled ? readyMixCost : cementCost + sandCost + aggregateCost + otherCost;
   const laborSubtotal = 0;
   const total = materialSubtotal + laborSubtotal;
   const mixerBatches = input.settings.mixerCapacityLiters > 0 ? (wetVolumeM3 * 1000 * wastageMultiplier) / input.settings.mixerCapacityLiters : 0;
@@ -67,6 +69,7 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
       sandCost,
       aggregateCost,
       otherCost,
+      readyMixCost,
       materialSubtotal,
       laborSubtotal,
       total,
