@@ -515,7 +515,7 @@ export function ConcreteMixPro() {
           <Panel title="Mix for This Pour" description="Choose the purpose, strength and supply for this project location. Strength and ratio are saved with each location because they may change between pours.">
             <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1.6fr)_130px_160px]">
               <Select
-                label="Purpose of Concrete"
+                label="Purpose"
                 value={purposeChoice}
                 onChange={(value) => {
                   const savedMix = customMixes.find((mix) => mix.name === value);
