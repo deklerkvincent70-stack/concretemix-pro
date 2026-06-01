@@ -4,8 +4,6 @@ export type LengthUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft';
 
 export type BagSize = 25 | 42.5 | 50;
 
-export type WastageOption = 0 | 5 | 10;
-
 export type CementType = 'Type I' | 'Type II' | 'Type III' | 'Type IV' | 'Type V' | 'Custom';
 
 export type AdditiveUnit = 'L' | 'ml' | 'gal' | 'fl oz';
@@ -46,24 +44,18 @@ export interface Settings {
   cementDensityKgM3: number;
   sandDensityKgM3: number;
   aggregateDensityKgM3: number;
-  mixerCapacityLiters: number;
-  wheelbarrowCapacityLiters: number;
   currencySymbol: string;
   cementTypeNames: Record<CementType, string>;
 }
 
 export interface Costs {
-  cementPerBag: number;
+  cementPerBag?: number;
   cementPerBagByType: Record<CementType, number>;
   customCements: CustomCementPreset[];
-  cementPerKg: number;
+  cementPerKg?: number;
   sandPerM3: number;
   aggregatePerM3: number;
-  water: number;
-  labor: number;
-  transport: number;
   otherName: string;
-  otherCost: number;
   readyMixEnabled: boolean;
   readyMixPerM3: number;
   additivePercentOfWater: number;
@@ -118,8 +110,6 @@ export interface CostOutput {
   aggregateCost: number;
   otherCost: number;
   readyMixCost: number;
-  materialSubtotal: number;
-  laborSubtotal: number;
   total: number;
   costPerM3: number;
 }
@@ -131,8 +121,6 @@ export interface CalculationResult {
   volumeFt3: number;
   materials: MaterialOutput;
   costs: CostOutput;
-  mixerBatches: number;
-  wheelbarrows: number;
   warnings: string[];
 }
 
@@ -156,8 +144,14 @@ export interface SavedProjectLocation {
   input: CalculationInput;
   orderedAt?: string;
   completedAt?: string;
+  progressPercent?: number;
+  orderStatuses?: Partial<Record<MaterialOrderItem, MaterialOrderStatus>>;
   updatedAt: string;
 }
+
+export type MaterialOrderItem = 'cement' | 'sand' | 'aggregate' | 'additive' | 'readyMix';
+
+export type MaterialOrderStatus = 'none' | 'ordered' | 'received';
 
 export interface CustomMixPreset {
   id: string;

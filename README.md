@@ -1,6 +1,6 @@
 # ConcreteMix Pro
 
-Offline-first concrete quantity, mix and cost calculator for contractors, builders, owner-builders and onsite crews.
+Offline-first concrete quantity, mix, cost, material order and progress dashboard calculator for contractors, builders, owner-builders and onsite crews.
 
 The app opens directly to the calculator, stores data locally, installs as a PWA, and works without a backend, login, cloud sync or live currency service.
 
@@ -29,9 +29,13 @@ npm.cmd run build
 - Built-in strength database from 5 MPa to 30 MPa+.
 - Cement, sand, aggregate, water, bags, mixer loads and wheelbarrow estimates.
 - Offline cost calculator with saved local pricing and currency symbol.
-- Settings for theme, units, bag size, wastage, dry factor, water-cement ratio, densities and capacities.
+- Saved projects and locations with a Progress & Order Status Dashboard.
+- Material order tracking for cement, sand, stone, additive and ready-mix.
+- Combined order PDFs across selected project locations.
+- Settings for theme, units, bag size, wastage, water-cement ratio, cement types, material costs and currency.
 - Local-only persistence through browser storage.
 - PDF/print export and native sharing where supported.
+- Help and privacy pages for web and Play Store use.
 
 ## Architecture
 

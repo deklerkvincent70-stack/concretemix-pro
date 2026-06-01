@@ -8,7 +8,6 @@ const CUSTOM_MIXES_KEY = 'concretemix:custom-mixes';
 const PROJECTS_KEY = 'concretemix:projects';
 
 export const defaultCosts: Costs = {
-  cementPerBag: 0,
   cementPerBagByType: {
     'Type I': 0,
     'Type II': 0,
@@ -18,14 +17,9 @@ export const defaultCosts: Costs = {
     Custom: 0
   },
   customCements: [],
-  cementPerKg: 0,
   sandPerM3: 0,
   aggregatePerM3: 0,
-  water: 0,
-  labor: 0,
-  transport: 0,
   otherName: 'Additive',
-  otherCost: 0,
   readyMixEnabled: false,
   readyMixPerM3: 0,
   additivePercentOfWater: 0,

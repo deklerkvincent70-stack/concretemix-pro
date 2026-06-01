@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Help',
-  description: 'How to use ConcreteMix Pro for projects, pour locations, mix ratios, ready-mix, costs, PDFs and local backups.'
+  description: 'How to use ConcreteMix Pro for projects, pour locations, mix ratios, ready-mix, costs, material order PDFs, progress tracking and local backups.'
 };
 
 const sections = [
@@ -14,7 +14,7 @@ const sections = [
       'Choose the shape, unit and dimensions for the pour.',
       'Choose the purpose, strength, cement type and supply method.',
       'Open Settings to enter material prices, currency and project defaults.',
-      'Use Save, Share, Save Order or Share Order to create PDFs.'
+      'Use the Progress & Order Status dashboard to save or share PDFs.'
     ]
   },
   {
@@ -24,7 +24,8 @@ const sections = [
       'A location is a specific pour inside that project, for example driveway slab, bedroom floor or beam over patio.',
       'Saved projects appear in the Project Name dropdown.',
       'Saved locations appear in the Location in project dropdown after a project is selected.',
-      'The Save button near the top saves the current project or location values on this device.'
+      'The Save button near the top saves the current project or location values on this device.',
+      'The dashboard can then show all saved locations for that project in one place.'
     ]
   },
   {
@@ -71,13 +72,16 @@ const sections = [
   {
     title: 'PDF Save, Share and Progress',
     items: [
-      'Save creates a PDF estimate for the current calculation.',
-      'Share opens the device share options where supported.',
-      'Save Order creates an order-list PDF from the ticked locations in the selected project.',
-      'Share Order shares the same selected-location order PDF.',
-      'If no saved project is selected, Save Order and Share Order use the current location only.',
-      'Tick boxes choose which saved locations appear on the order PDF.',
-      'O marks a location ordered and P marks it poured/completed. Red means not done, green means done.',
+      'Save and Share in the dashboard create a PDF from the selected dashboard rows.',
+      'Use the Material row selector to include locations in the progress/details section.',
+      'Use the CM, SD, ST and AD status buttons to build the shopping list section for cement, sand, stone and additive.',
+      'For ready-mix locations, use the blue PRE status button to track ordered and received ready-mix.',
+      'When more than one order location is selected, the PDF shows each location and a combined material total to buy.',
+      'If no saved project is selected, Save and Share use the current calculation only.',
+      'Material status colors are red for not ordered, amber for on the order PDF/not received, and green for received.',
+      'Only amber material items are added to the order list PDF.',
+      'The Progress percentage tracks pour progress from 0 to 100 percent.',
+      'P follows the Progress percentage color: red at low progress, amber in the middle and green at 100 percent.',
       'On Android, the app uses the native share sheet so you can choose apps such as Files, Gmail, WhatsApp or Quick Share.'
     ]
   },

@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Calculator, HelpCircle, Moon, Save, Share2, Sun } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Moon, Save, Share2, ShieldCheck, Sun } from 'lucide-react';
 import { cementDescriptions, defaultSettings, purposes, strengthDatabase } from '@/lib/concrete/data';
 import { calculateConcrete, formatRatio, getMixByStrength, recommendedForPurpose } from '@/lib/concrete/engine';
-import { downloadOrderPdf, downloadProjectOrderPdf, downloadReportPdf, shareOrderPdf, shareProjectOrderPdf, shareReportPdf } from '@/lib/concrete/pdf';
-import { clearAllConcreteData, clearCustomMixes, clearHistory, clearProjects, createBackup, defaultCosts, loadCosts, loadCustomMixes, loadHistory, loadProjects, loadSettings, restoreBackup, saveCalculation, saveCosts, saveCustomMix, saveProject, saveSettings } from '@/lib/concrete/storage';
-import type { AdditiveUnit, BagSize, CalculationInput, CementType, ConcreteBackup, Costs, CustomMixPreset, Dimensions, LengthUnit, Purpose, SavedCalculation, SavedProject, Settings, Shape } from '@/lib/concrete/types';
+import { downloadOrderPdf, downloadProjectDashboardPdf, shareOrderPdf, shareProjectDashboardPdf } from '@/lib/concrete/pdf';
+import { clearAllConcreteData, clearCustomMixes, clearHistory, clearProjects, createBackup, defaultCosts, loadCosts, loadCustomMixes, loadProjects, loadSettings, restoreBackup, saveCosts, saveCustomMix, saveProject, saveSettings } from '@/lib/concrete/storage';
+import type { AdditiveUnit, BagSize, CalculationInput, CementType, ConcreteBackup, Costs, CustomMixPreset, Dimensions, LengthUnit, MaterialOrderItem, MaterialOrderStatus, Purpose, SavedProject, SavedProjectLocation, Settings, Shape } from '@/lib/concrete/types';
 import { kgToPounds, round } from '@/lib/concrete/units';
 
 const shapes: { id: Shape; label: string }[] = [
@@ -17,6 +17,13 @@ const shapes: { id: Shape; label: string }[] = [
   { id: 'beam', label: 'Beam' },
   { id: 'stair', label: 'Stair' },
   { id: 'custom', label: 'Custom' }
+];
+
+const materialOrderItems: { id: MaterialOrderItem; label: string }[] = [
+  { id: 'cement', label: 'CEMENT' },
+  { id: 'sand', label: 'SAND' },
+  { id: 'aggregate', label: 'STONE' },
+  { id: 'additive', label: 'ADDITIVE' }
 ];
 
 const units: LengthUnit[] = ['mm', 'cm', 'm', 'in', 'ft'];
@@ -42,7 +49,6 @@ export function ConcreteMixPro() {
   const [hydrated, setHydrated] = useState(false);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [costs, setCosts] = useState<Costs>(defaultCosts);
-  const [history, setHistory] = useState<SavedCalculation[]>([]);
   const [customMixes, setCustomMixes] = useState<CustomMixPreset[]>([]);
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -76,7 +82,6 @@ export function ConcreteMixPro() {
     setSettings(storedSettings);
     setUnit(storedSettings.defaultUnit);
     setCosts(storedCosts);
-    setHistory(loadHistory());
     setCustomMixes(loadCustomMixes());
     const projects = loadProjects();
     setSavedProjects(projects);
@@ -160,13 +165,19 @@ export function ConcreteMixPro() {
   const hasUnsavedProjectChanges = Boolean(selectedProjectId && savedInputSnapshot && savedInputSnapshot !== inputSnapshot);
   const waterDisplay = formatLiquid(result.materials.waterLiters, settings.unitSystem);
   const additiveDisplay = formatLiquid(result.materials.additiveLiters, settings.unitSystem);
-
-  function saveCurrent() {
-    const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const saved = saveCalculation({ id, createdAt: new Date().toISOString(), input, result });
-    setHistory(saved);
-    downloadReportPdf(input, result);
-  }
+  const dashboardSummaries = useMemo(
+    () => projectLocations.map((location) => ({ location, result: calculateConcrete(location.input) })),
+    [projectLocations]
+  );
+  const projectActualCost = dashboardSummaries.length > 0 ? dashboardSummaries.reduce((sum, item) => sum + item.result.costs.total, 0) : result.costs.total;
+  const selectedDashboardCost = dashboardSummaries
+    .filter((item) => selectedOrderLocationIds.includes(item.location.id))
+    .reduce((sum, item) => sum + item.result.costs.total, 0);
+  const selectedShoppingCost = dashboardSummaries
+    .filter((item) => hasPendingMaterialOrders(item.location))
+    .reduce((sum, item) => sum + item.result.costs.total, 0);
+  const pendingMaterialOrderLocations = projectLocations.filter((location) => hasPendingMaterialOrders(location));
+  const hasPendingMaterialOrder = pendingMaterialOrderLocations.length > 0;
 
   function saveCustomCurrent() {
     const name = customPurposeName.trim();
@@ -406,10 +417,7 @@ export function ConcreteMixPro() {
       setNotes('');
       setDimensions(emptyDimensions);
     }
-    if (options.calculations) {
-      clearHistory();
-      setHistory([]);
-    }
+    if (options.calculations) clearHistory();
     if (options.customMixes) {
       clearCustomMixes();
       setCustomMixes([]);
@@ -443,29 +451,33 @@ export function ConcreteMixPro() {
     }
   }
 
-  async function shareResult() {
-    await shareReportPdf(input, result);
-  }
-
   function getSelectedOrderProject() {
     if (!selectedProject) return null;
     const selectedLocations = selectedProject.locations.filter((location) => selectedOrderLocationIds.includes(location.id));
     return selectedLocations.length > 0 ? { ...selectedProject, locations: selectedLocations } : null;
   }
 
-  function saveOrderList() {
-    const orderProject = getSelectedOrderProject();
-    if (orderProject) {
-      downloadProjectOrderPdf(orderProject);
+  function getSelectedShoppingProject() {
+    if (!selectedProject) return null;
+    const selectedLocations = selectedProject.locations.filter((location) => hasPendingMaterialOrders(location));
+    return selectedLocations.length > 0 ? { ...selectedProject, locations: selectedLocations } : null;
+  }
+
+  function saveDashboardPdf() {
+    const statusProject = getSelectedOrderProject();
+    const shoppingProject = getSelectedShoppingProject();
+    if (statusProject || shoppingProject) {
+      downloadProjectDashboardPdf(statusProject, shoppingProject);
       return;
     }
     downloadOrderPdf(input, result);
   }
 
-  async function shareOrderList() {
-    const orderProject = getSelectedOrderProject();
-    if (orderProject) {
-      await shareProjectOrderPdf(orderProject);
+  async function shareDashboardPdf() {
+    const statusProject = getSelectedOrderProject();
+    const shoppingProject = getSelectedShoppingProject();
+    if (statusProject || shoppingProject) {
+      await shareProjectDashboardPdf(statusProject, shoppingProject);
       return;
     }
     await shareOrderPdf(input, result);
@@ -475,13 +487,46 @@ export function ConcreteMixPro() {
     setSelectedOrderLocationIds((current) => current.includes(locationId) ? current.filter((id) => id !== locationId) : [...current, locationId]);
   }
 
-  function setLocationOrdered(locationId: string, ordered: boolean) {
+  function cycleMaterialOrderStatus(locationId: string, item: MaterialOrderItem) {
+    if (!selectedProject) return;
+    const locationToUpdate = selectedProject.locations.find((location) => location.id === locationId);
+    if (!locationToUpdate) return;
+    const current = getMaterialOrderStatus(locationToUpdate, item);
+    const next: MaterialOrderStatus = current === 'none' ? 'ordered' : current === 'ordered' ? 'received' : 'none';
+    const orderStatuses = { ...(locationToUpdate.orderStatuses ?? {}), [item]: next };
+    if (next === 'none') delete orderStatuses[item];
+    const updatedLocation = {
+      ...locationToUpdate,
+      orderStatuses,
+      orderedAt: Object.values(orderStatuses).some((status) => status === 'ordered' || status === 'received') ? (locationToUpdate.orderedAt ?? new Date().toISOString()) : undefined,
+      updatedAt: new Date().toISOString()
+    };
+    const updatedProject = {
+      ...selectedProject,
+      locations: selectedProject.locations.map((location) => location.id === locationId ? updatedLocation : location),
+      updatedAt: new Date().toISOString()
+    };
+    const saved = saveProject(updatedProject);
+    setSavedProjects(saved);
+    if (next === 'ordered') setSelectedOrderLocationIds([]);
+  }
+
+  function selectAllOrderLocations() {
+    setSelectedOrderLocationIds(projectLocations.map((location) => location.id));
+  }
+
+  function clearOrderLocations() {
+    setSelectedOrderLocationIds([]);
+  }
+
+  function setLocationCompleted(locationId: string, completed: boolean) {
     if (!selectedProject) return;
     const locationToUpdate = selectedProject.locations.find((location) => location.id === locationId);
     if (!locationToUpdate) return;
     const updatedLocation = {
       ...locationToUpdate,
-      orderedAt: ordered ? new Date().toISOString() : undefined,
+      completedAt: completed ? new Date().toISOString() : undefined,
+      progressPercent: completed ? 100 : Math.min(locationToUpdate.progressPercent ?? 0, 99),
       updatedAt: new Date().toISOString()
     };
     const updatedProject = {
@@ -493,13 +538,15 @@ export function ConcreteMixPro() {
     setSavedProjects(saved);
   }
 
-  function setLocationCompleted(locationId: string, completed: boolean) {
+  function setLocationProgress(locationId: string, progressPercent: number) {
     if (!selectedProject) return;
     const locationToUpdate = selectedProject.locations.find((location) => location.id === locationId);
     if (!locationToUpdate) return;
+    const progress = Math.max(0, Math.min(100, Number.isFinite(progressPercent) ? progressPercent : 0));
     const updatedLocation = {
       ...locationToUpdate,
-      completedAt: completed ? new Date().toISOString() : undefined,
+      progressPercent: progress,
+      completedAt: progress >= 100 ? (locationToUpdate.completedAt ?? new Date().toISOString()) : undefined,
       updatedAt: new Date().toISOString()
     };
     const updatedProject = {
@@ -513,14 +560,19 @@ export function ConcreteMixPro() {
 
   return (
     <main className="min-h-screen bg-[#f4f2ea] text-[#101418] dark:bg-[#121412] dark:text-[#f7f5ed]">
-      <div className="mx-auto grid w-full max-w-7xl gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-5 lg:pt-5">
-        <header className="sticky top-0 z-20 -mx-2 border-b border-black/10 bg-[#f4f2ea]/95 px-2 py-2 backdrop-blur dark:border-white/10 dark:bg-[#121412]/95 sm:-mx-5 sm:px-5 sm:py-3 lg:static lg:col-span-2 lg:mx-0 lg:rounded-lg lg:border lg:px-5">
+      <div className="mx-auto grid w-full max-w-7xl gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:gap-5 lg:pt-5">
+        <header className="sticky top-0 z-20 -mx-2 border-b border-black/10 bg-[#f4f2ea]/95 px-2 py-2 backdrop-blur dark:border-white/10 dark:bg-[#121412]/95 sm:-mx-5 sm:px-5 sm:py-3 lg:static lg:mx-0 lg:rounded-lg lg:border lg:px-5">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wide text-[#b8562f] sm:text-xs">Concrete Quantity, Mix and Cost Calculator</p>
+              <p className="text-[10px] font-black uppercase tracking-wide text-[#b8562f] sm:text-xs">Concrete Quantity, Mix and Cost Calculator, Material Order Creator and Progress Dashboard</p>
               <h1 className="mt-0.5 text-xl font-black leading-tight sm:mt-1 sm:text-3xl">ConcreteMix Pro</h1>
+              <p className="mt-1 text-xs font-black sm:hidden">Project total: {currency}{formatMoney(projectActualCost)}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <div className="hidden rounded-md bg-[#101418] px-3 py-2 text-right text-white dark:bg-white dark:text-[#101418] sm:block">
+                <p className="text-[10px] font-black uppercase opacity-70">Project total</p>
+                <p className="text-lg font-black leading-tight">{currency}{formatMoney(projectActualCost)}</p>
+              </div>
               <a
                 className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
                 href="/help"
@@ -528,6 +580,14 @@ export function ConcreteMixPro() {
                 title="Help"
               >
                 <HelpCircle size={22} />
+              </a>
+              <a
+                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
+                href="/privacy"
+                aria-label="Open privacy policy"
+                title="Privacy"
+              >
+                <ShieldCheck size={22} />
               </a>
               <button
                 className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
@@ -654,11 +714,13 @@ export function ConcreteMixPro() {
                   setCustomCementName(value);
                 }}
                 options={cementOptions}
+                disabled={costs.readyMixEnabled}
               />
               <NumberField
                 label="Additive %"
                 value={costs.additivePercentOfWater}
                 onChange={(value) => setCosts({ ...costs, additivePercentOfWater: value })}
+                disabled={costs.readyMixEnabled}
               />
               <Select
                 label="Supply"
@@ -687,25 +749,25 @@ export function ConcreteMixPro() {
                   <p className="font-black">
                     {isCustomMix ? customPurposeName : selectedMix.label} / {isCustomMix ? `${formatStrength(approximateCustomStrength?.strengthMpa ?? strengthMpa, settings.strengthUnit)} approximate custom` : formatStrength(strengthMpa, settings.strengthUnit)}
                   </p>
-                  <p className="font-bold">Mix ratio: {costs.readyMixEnabled ? 'Ready-mix by volume' : formatRatio(ratio)}</p>
-                  <p className="text-xs font-black uppercase text-black/55 dark:text-white/55">Cement : Sand : Stone</p>
-                  <p className="font-bold">Water: {waterDisplay.value} {waterDisplay.unit} at w/c {settings.waterCementRatio}</p>
+                  {!costs.readyMixEnabled && <p className="font-bold">Mix ratio: {formatRatio(ratio)}</p>}
+                  {!costs.readyMixEnabled && <p className="text-xs font-black uppercase text-black/55 dark:text-white/55">Cement : Sand : Stone</p>}
+                  {!costs.readyMixEnabled && <p className="font-bold">Water: {waterDisplay.value} {waterDisplay.unit} at w/c {settings.waterCementRatio}</p>}
                   {approximateCustomStrength && (
                     <p className="rounded-md bg-[#fff4ea] p-2 font-bold text-[#8a3b1d] dark:bg-[#311f18] dark:text-[#ffbd91]">
                       Approximate ratio only: similar to about {formatStrength(approximateCustomStrength.strengthMpa, settings.strengthUnit)}. Not substantiated. Custom mixes depend on water, aggregate, cement, additives, curing and site practice.
                     </p>
                   )}
                   <p className="text-black/70 dark:text-white/70">{costs.readyMixEnabled ? 'Ready-mix mode uses the calculated wet volume plus wastage for delivered concrete cost.' : isCustomMix ? 'User-defined concrete mix.' : selectedMix.typicalUse}</p>
-                  <p className="text-black/70 dark:text-white/70">
+                  {!costs.readyMixEnabled && <p className="text-black/70 dark:text-white/70">
                     {customCementName} - {cementType === 'Custom' ? 'User-defined cement, no Type I-V technical description applied.' : cementDescriptions[cementType]}
-                  </p>
+                  </p>}
                   {!isCustomMix && !selectedMix.ratio && <p className="font-bold text-[#b8562f]">Uses a provisional 1 : 1 : 2 quantity estimate until a verified design mix is entered.</p>}
                 </div>
-                <button className="min-h-11 rounded-md bg-[#1f7a5a] px-4 font-black text-white" onClick={() => setManualMix((value) => !value)}>
+                {!costs.readyMixEnabled && <button className="min-h-11 rounded-md bg-[#1f7a5a] px-4 font-black text-white" onClick={() => setManualMix((value) => !value)}>
                   {manualMix ? 'Done' : 'Edit ratio'}
-                </button>
+                </button>}
               </div>
-              {manualMix && (
+              {manualMix && !costs.readyMixEnabled && (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {manualRatio.map((part, index) => (
                     <NumberField
@@ -769,79 +831,135 @@ export function ConcreteMixPro() {
             <p className="mt-3 text-sm font-semibold text-black/65 dark:text-white/70">Cost rates are set in Settings so they stay saved for the next calculation. Ready-mix mode prices delivered concrete by volume.</p>
           </Panel>
 
+          <Panel title="Progress & Order Status Dashboard" description="Select Material rows for the status section and amber order items for the shopping list section. Save and Share use those selections.">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_150px_150px]">
+              <Select
+                label="Project"
+                value={selectedProjectId}
+                onChange={(value) => {
+                  const project = savedProjects.find((item) => item.id === value);
+                  if (project) runWithUnsavedCheck(() => loadSavedInput(project));
+                }}
+                options={savedProjects.map((project) => project.id)}
+                labels={Object.fromEntries(savedProjects.map((project) => [project.id, project.name]))}
+                disabled={savedProjects.length === 0}
+              />
+              <SummaryPill label="Project actual cost" value={`${currency}${formatMoney(projectActualCost)}`} />
+              <SummaryPill label="Material rows" value={`${selectedOrderLocationIds.length}`} />
+              <SummaryPill label="Order items" value={`${pendingMaterialOrderLocations.length}`} />
+            </div>
+
+            {selectedProject ? (
+              <>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-black/65 dark:text-white/70">
+                  <span>{pendingMaterialOrderLocations.length} locations with pending order items | {projectLocations.filter((location) => location.completedAt).length} poured</span>
+                  <span className="flex gap-2">
+                    <button className="rounded-md bg-black/5 px-3 py-2 font-black text-[#1f7a5a] dark:bg-white/10" onClick={selectAllOrderLocations}>Select all</button>
+                    <button className="rounded-md bg-black/5 px-3 py-2 font-black text-[#b8562f] dark:bg-white/10" onClick={clearOrderLocations}>Clear</button>
+                  </span>
+                </div>
+                <div className="mt-3 overflow-hidden rounded-md border border-black/10 bg-white text-sm font-semibold dark:border-white/10 dark:bg-[#121412]">
+                  <div className="hidden grid-cols-[74px_minmax(160px,1fr)_92px_96px_64px_68px_68px_68px_78px_68px_84px_150px] items-center gap-1.5 bg-black/5 px-3 py-2 text-[9.5px] font-black uppercase leading-tight text-black/55 dark:bg-white/10 dark:text-white/60 sm:grid">
+                    <span>Material</span>
+                    <span>Location</span>
+                    <span>Wet vol</span>
+                          <span>Strength</span>
+                    <span>Mix</span>
+                    <span>CEMENT</span>
+                    <span>SAND</span>
+                    <span>STONE</span>
+                    <span>ADDITIVE</span>
+                    <span>Pour</span>
+                    <span>Progress</span>
+                    <span>Cost</span>
+                  </div>
+                  <div className="max-h-72 overflow-auto">
+                    {dashboardSummaries.map(({ location, result: locationResult }) => {
+                      const selected = selectedOrderLocationIds.includes(location.id);
+                      const progressPercent = location.progressPercent ?? (location.completedAt ? 100 : 0);
+                      return (
+                        <div key={location.id} className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2 border-t border-black/10 px-3 py-2 dark:border-white/10 sm:grid-cols-[74px_minmax(160px,1fr)_92px_96px_64px_68px_68px_68px_78px_68px_84px_150px] sm:gap-1.5">
+                          <button
+                            className={`grid h-7 w-7 place-items-center rounded-full border-2 ${selected ? 'border-[#1f7a5a]' : 'border-black/25 dark:border-white/35'}`}
+                            type="button"
+                            onClick={() => toggleOrderLocation(location.id)}
+                            aria-label={selected ? `Remove ${location.name} from PDF` : `Include ${location.name} on PDF`}
+                            title={selected ? 'Selected for PDF' : 'Not selected for PDF'}
+                          >
+                            <span className={`h-3 w-3 rounded-full ${selected ? 'bg-[#1f7a5a]' : 'bg-transparent'}`} />
+                          </button>
+                          <div className="min-w-0">
+                            <p className="truncate font-black">{location.name}</p>
+                            <p className="text-xs text-black/55 dark:text-white/60 sm:hidden">{currency}{formatMoney(locationResult.costs.total)}</p>
+                          </div>
+                          <span className="hidden truncate text-xs font-black sm:block">{formatDashboardVolume(locationResult, settings.unitSystem)}</span>
+                          <span className="hidden truncate text-xs font-black sm:block">{formatStrength(location.input.strengthMpa, location.input.settings.strengthUnit)}</span>
+                          {location.input.costs.readyMixEnabled ? (
+                            <button
+                              className={`grid h-9 w-9 place-items-center rounded-full text-[10px] font-black text-white ${materialOrderStatusClass(getMaterialOrderStatus(location, 'readyMix'))}`}
+                              type="button"
+                              onClick={() => cycleMaterialOrderStatus(location.id, 'readyMix')}
+                              title={`PREMIX: ${materialOrderStatusLabel(getMaterialOrderStatus(location, 'readyMix'))}. Click to change.`}
+                            >
+                              PRE
+                            </button>
+                          ) : (
+                            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#101418] text-[10px] font-black text-white dark:bg-white dark:text-[#101418]">SITE</span>
+                          )}
+                          {materialOrderItems.map((item) => (
+                            <button
+                              key={item.id}
+                              className={`grid h-9 w-9 place-items-center rounded-full text-[10px] font-black text-white ${location.input.costs.readyMixEnabled ? 'cursor-not-allowed bg-black/20 text-black/35 dark:bg-white/15 dark:text-white/35' : materialOrderStatusClass(getMaterialOrderStatus(location, item.id))}`}
+                              type="button"
+                              disabled={location.input.costs.readyMixEnabled}
+                              onClick={() => cycleMaterialOrderStatus(location.id, item.id)}
+                              aria-label={`${item.label} ${materialOrderStatusLabel(getMaterialOrderStatus(location, item.id))}`}
+                              title={location.input.costs.readyMixEnabled ? 'Premix location uses the PRE order status.' : `${item.label}: ${materialOrderStatusLabel(getMaterialOrderStatus(location, item.id))}. Click to change.`}
+                            >
+                              {materialOrderShortLabel(item.id)}
+                            </button>
+                          ))}
+                          <span
+                            className={`grid h-9 w-9 place-items-center rounded-full text-[11px] font-black text-white ${pourProgressClass(progressPercent)}`}
+                            aria-label={`Pour progress ${progressPercent}%`}
+                            title={`Pour progress ${progressPercent}%`}
+                          >
+                            P
+                          </span>
+                          <NumberField
+                            label=""
+                            value={progressPercent}
+                            onChange={(value) => setLocationProgress(location.id, value)}
+                            suffix="%"
+                          />
+                          <span className="hidden truncate font-black sm:block">{currency}{formatMoney(locationResult.costs.total)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="mt-3 rounded-md border border-black/10 bg-white p-3 text-sm font-semibold text-black/65 dark:border-white/10 dark:bg-[#121412] dark:text-white/70">
+                Save a project and location first. Until then Save and Share create a PDF for the current calculation only.
+              </p>
+            )}
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Action icon={<Save size={18} />} label={hasPendingMaterialOrder ? 'Save Order' : 'Save'} onClick={saveDashboardPdf} />
+              <Action icon={<Share2 size={18} />} label={hasPendingMaterialOrder ? 'Share Order' : 'Share'} onClick={shareDashboardPdf} />
+            </div>
+            <p className="mt-2 text-xs font-bold text-black/55 dark:text-white/60">
+              Red means not ordered, amber means on the next order PDF, and green means received. When any material is amber, Save and Share create an order PDF from amber items only.
+            </p>
+          </Panel>
+
           <Panel title="Settings" action={<button className="text-sm font-black text-[#1f7a5a]" onClick={() => setOpenSettings((value) => !value)}>{openSettings ? 'Hide' : 'Edit'}</button>}>
             {openSettings && <SettingsEditor settings={settings} setSettings={setSettings} setUnit={setUnit} costs={costs} setCosts={setCosts} currency={currency} onClearSelected={clearSelectedData} onBackupRestored={() => window.location.reload()} />}
           </Panel>
         </div>
 
-        <aside className="space-y-3 sm:space-y-4 lg:sticky lg:top-5">
-          <Panel title="Result" emphasis action={<Calculator size={22} />}>
-            <div className="rounded-md bg-[#101418] p-4 text-white dark:bg-white dark:text-[#101418]">
-              <p className="text-xs font-black uppercase opacity-70">Total actual cost estimate</p>
-              <p className="mt-1 text-3xl font-black">{currency}{formatMoney(result.costs.total)}</p>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Action icon={<Save size={18} />} label="Save" onClick={saveCurrent} />
-              <Action icon={<Share2 size={18} />} label="Share" onClick={shareResult} />
-            </div>
-          </Panel>
-
-          <Panel title="Progress & Order Status">
-            <p className="text-sm font-semibold text-black/65 dark:text-white/70">
-              Tick saved locations for the order PDF. Use O for ordered and P for poured/completed.
-            </p>
-            {selectedProject && (
-              <div className="mt-3 rounded-md border border-black/10 bg-white p-3 text-sm font-semibold dark:border-white/10 dark:bg-[#121412]">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-black">Project progress</span>
-                  <span>{projectLocations.filter((location) => location.orderedAt).length} ordered / {projectLocations.filter((location) => location.completedAt).length} poured</span>
-                </div>
-                <div className="mt-2 max-h-40 space-y-2 overflow-auto">
-                  {projectLocations.map((location) => (
-                    <div key={location.id} className="grid grid-cols-[22px_28px_28px_minmax(0,1fr)] items-center gap-2 rounded-md bg-black/5 px-2 py-2 dark:bg-white/10">
-                      <input
-                        className="h-5 w-5 accent-[#1f7a5a]"
-                        type="checkbox"
-                        aria-label={`Include ${location.name} on order PDF`}
-                        checked={selectedOrderLocationIds.includes(location.id)}
-                        onChange={() => toggleOrderLocation(location.id)}
-                      />
-                      <button
-                        className={`h-6 w-6 rounded-full text-[10px] font-black text-white ${location.orderedAt ? 'bg-[#1f7a5a]' : 'bg-[#b8562f]'}`}
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setLocationOrdered(location.id, !location.orderedAt);
-                        }}
-                        aria-label={location.orderedAt ? 'Mark not ordered' : 'Mark ordered'}
-                        title={location.orderedAt ? 'Ordered - click to mark not ordered' : 'Not ordered - click to mark ordered'}
-                      >
-                        O
-                      </button>
-                      <button
-                        className={`h-6 w-6 rounded-full text-[10px] font-black text-white ${location.completedAt ? 'bg-[#1f7a5a]' : 'bg-[#b8562f]'}`}
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setLocationCompleted(location.id, !location.completedAt);
-                        }}
-                        aria-label={location.completedAt ? 'Mark not poured' : 'Mark poured'}
-                        title={location.completedAt ? 'Poured - click to mark not poured' : 'Not poured - click to mark poured'}
-                      >
-                        P
-                      </button>
-                      <span className="truncate">{location.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Action icon={<Save size={18} />} label="Save Order" onClick={saveOrderList} />
-              <Action icon={<Share2 size={18} />} label="Share Order" onClick={shareOrderList} />
-            </div>
-          </Panel>
-
+        <div className="space-y-3 sm:space-y-4">
           {result.warnings.length > 0 && (
             <Panel title="Warnings" action={<AlertTriangle size={20} className="text-[#b8562f]" />}>
               <div className="space-y-2 text-sm font-semibold">
@@ -851,39 +969,7 @@ export function ConcreteMixPro() {
               </div>
             </Panel>
           )}
-
-          <Panel title="Saved">
-            <div className="space-y-2">
-              {history.length === 0 ? (
-                <p className="text-sm text-black/65 dark:text-white/70">Saved calculations stay on this device for offline reuse.</p>
-              ) : (
-                history.slice(0, 4).map((item) => (
-                  <button
-                    key={item.id}
-                    className="w-full rounded-md border border-black/10 bg-white p-3 text-left text-sm dark:border-white/10 dark:bg-[#1d211e]"
-                    onClick={() => {
-                      setProjectName(item.input.projectName);
-                      setLocationInProject(item.input.locationInProject || '');
-                      setNotes(item.input.notes);
-                      setShape(item.input.shape);
-                      setUnit(item.input.unit);
-                      setPurpose(item.input.purpose);
-                      setPurposeChoice(item.input.purpose);
-                      setCementType(item.input.cementType);
-                      setCustomCementName(item.input.customCementName || settings.cementTypeNames[item.input.cementType]);
-                      setCementChoice(item.input.customCementName || settings.cementTypeNames[item.input.cementType]);
-                      setStrengthMpa(item.input.strengthMpa);
-                      setDimensions(item.input.dimensions);
-                    }}
-                  >
-                    <span className="block font-bold">{item.input.projectName || 'Concrete estimate'}</span>
-                    <span>{round(item.result.wetVolumeM3, 3)} m3 - {formatDateTime(item.createdAt)}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          </Panel>
-        </aside>
+        </div>
       </div>
       {showUnsavedPrompt && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4">
@@ -1184,7 +1270,7 @@ function Field({ label, value, onChange, disabled = false }: { label: string; va
   return <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<input className={`mt-1 h-11 w-full rounded-md border px-2.5 text-sm font-bold outline-none focus:border-[#1f7a5a] sm:h-12 sm:px-3 sm:text-base ${disabled ? 'border-black/10 bg-black/[0.04] text-black/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40' : 'border-black/15 bg-white text-[#101418] dark:border-white/15 dark:bg-[#121412] dark:text-white'}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} /></label>;
 }
 
-function NumberField({ label, value, onChange, prefix = '', money = false }: { label: string; value: number; onChange: (value: number) => void; prefix?: string; money?: boolean }) {
+function NumberField({ label, value, onChange, prefix = '', suffix = '', money = false, disabled = false }: { label: string; value: number; onChange: (value: number) => void; prefix?: string; suffix?: string; money?: boolean; disabled?: boolean }) {
   const formatValue = (next: number) => (money ? next.toFixed(2) : String(Number.isFinite(next) ? next : 0));
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState(formatValue(Number.isFinite(value) ? value : 0));
@@ -1194,14 +1280,15 @@ function NumberField({ label, value, onChange, prefix = '', money = false }: { l
   }, [focused, money, value]);
 
   return (
-    <label className="block text-xs font-bold text-black/70 dark:text-white/70 sm:text-sm">
+    <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>
       {label}
-      <span className="mt-1 flex h-11 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] sm:h-12">
+      <span className={`mt-1 flex h-11 items-center rounded-md border px-2 focus-within:border-[#1f7a5a] sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}>
         {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
         <input
           className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base"
           inputMode="decimal"
           value={draft}
+          disabled={disabled}
           onFocus={() => {
             setFocused(true);
             if (value === 0) setDraft('');
@@ -1218,6 +1305,7 @@ function NumberField({ label, value, onChange, prefix = '', money = false }: { l
             onChange(Number(event.target.value) || 0);
           }}
         />
+        {suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}
       </span>
     </label>
   );
@@ -1275,12 +1363,12 @@ function Select({ label, value, onChange, options, suffix = '', labels = {}, dis
   return <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}><select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
 }
 
-function CementTypeSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
+function CementTypeSelect({ label, value, onChange, options, disabled = false }: { label: string; value: string; onChange: (value: string) => void; options: string[]; disabled?: boolean }) {
   return (
-    <label className="block text-xs font-bold text-black/70 dark:text-white/70 sm:text-sm">
+    <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>
       {label}
-      <span className="mt-1 flex h-11 items-center rounded-md border border-black/15 bg-white px-2 dark:border-white/15 dark:bg-[#121412] sm:h-12">
-        <select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base" value={value} onChange={(event) => onChange(event.target.value)}>
+      <span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}>
+        <select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
           {options.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       </span>
@@ -1321,14 +1409,46 @@ function formatMoney(value: number) {
   return round(value, 2).toFixed(2);
 }
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+function formatDashboardVolume(result: { wetVolumeM3: number; volumeFt3: number }, unitSystem: Settings['unitSystem']) {
+  if (unitSystem === 'imperial') return `${round(result.volumeFt3, 2)} ft3`;
+  return `${round(result.wetVolumeM3, 3)} m3`;
+}
+
+function pourProgressClass(value: number) {
+  if (value >= 100) return 'bg-[#1f7a5a]';
+  if (value >= 80) return 'bg-[#5f8f3a]';
+  if (value >= 60) return 'bg-[#9b8a22]';
+  if (value >= 40) return 'bg-[#c88722]';
+  if (value >= 20) return 'bg-[#e24a2f]';
+  return 'bg-[#d71920]';
+}
+
+function getMaterialOrderStatus(location: SavedProjectLocation, item: MaterialOrderItem): MaterialOrderStatus {
+  return location.orderStatuses?.[item] ?? 'none';
+}
+
+function hasPendingMaterialOrders(location: SavedProjectLocation) {
+  return getMaterialOrderStatus(location, 'readyMix') === 'ordered' || materialOrderItems.some((item) => getMaterialOrderStatus(location, item.id) === 'ordered');
+}
+
+function materialOrderStatusClass(status: MaterialOrderStatus) {
+  if (status === 'received') return 'bg-[#1f7a5a]';
+  if (status === 'ordered') return 'bg-[#f0a51a] text-[#101418]';
+  return 'bg-[#d71920]';
+}
+
+function materialOrderStatusLabel(status: MaterialOrderStatus) {
+  if (status === 'received') return 'received';
+  if (status === 'ordered') return 'on order list, not received';
+  return 'not ordered';
+}
+
+function materialOrderShortLabel(item: MaterialOrderItem) {
+  if (item === 'cement') return 'CM';
+  if (item === 'sand') return 'SD';
+  if (item === 'aggregate') return 'ST';
+  if (item === 'additive') return 'AD';
+  return 'PR';
 }
 
 function isSavedCustomCement(name: string) {

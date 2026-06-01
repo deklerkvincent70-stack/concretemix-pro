@@ -29,7 +29,10 @@ Key features:
 - Saved projects and locations
 - PDF estimate and order-list export
 - Combined project order list across saved locations
-- Ordered/not ordered location tracking
+- Progress & Order Status Dashboard
+- Material row selection for PDF progress/details reports
+- Cement, sand, stone, additive and ready-mix order status tracking
+- Red/amber/green order and pour progress indicators
 - Local backup export/import between devices
 - Built-in help guide
 - Works offline after installation
@@ -60,6 +63,7 @@ https://concretequantitymixandcostcalculator.vindk.com/privacy
 - App stores projects, notes, material prices and settings locally on the user's device/browser storage.
 - Users can export a local JSON backup file and import it on another device. The user controls how that file is moved or shared.
 - PDF files are created only when the user chooses Save or Share.
+- Dashboard row selections, material order status and pour progress are stored locally on the user's device.
 
 ## App Access
 
@@ -82,6 +86,7 @@ No violence, gambling, user-generated content, social features, purchases or res
 - Main calculator with project/location and dimensions
 - Mix for This Pour with purpose, strength and ready-mix option
 - Materials and costs summary
+- Progress & Order Status Dashboard with Material, CM, SD, ST, AD, PRE and Progress indicators
 - Settings cost section
 - PDF/order list share sheet on Android
 - Help page and backup export/import controls

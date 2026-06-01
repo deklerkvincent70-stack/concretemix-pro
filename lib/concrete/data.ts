@@ -12,8 +12,6 @@ export const defaultSettings: Settings = {
   cementDensityKgM3: 1440,
   sandDensityKgM3: 1600,
   aggregateDensityKgM3: 1500,
-  mixerCapacityLiters: 200,
-  wheelbarrowCapacityLiters: 65,
   currencySymbol: '$',
   cementTypeNames: {
     'Type I': 'Type I - General purpose',

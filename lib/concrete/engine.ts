@@ -35,18 +35,13 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
   const additiveContainers = additiveContainerLiters > 0 ? additiveLiters / additiveContainerLiters : 0;
   const cementBags = input.settings.bagSize > 0 ? cementKg / input.settings.bagSize : 0;
   const cementBagCost = getSelectedCementBagCost(input);
-  const cementCost = cementBagCost > 0 ? cementBags * cementBagCost : cementKg * input.costs.cementPerKg;
+  const cementCost = cementBagCost > 0 ? cementBags * cementBagCost : cementKg * (input.costs.cementPerKg ?? 0);
   const sandCost = sandM3 * safeNumber(input.costs.sandPerM3);
   const aggregateCost = aggregateM3 * safeNumber(input.costs.aggregatePerM3);
   const otherCost = additiveContainers * safeNumber(input.costs.additiveContainerCost);
   const readyMixVolumeM3 = wetVolumeM3 * wastageMultiplier;
   const readyMixCost = input.costs.readyMixEnabled ? readyMixVolumeM3 * safeNumber(input.costs.readyMixPerM3) : 0;
-  const materialSubtotal = input.costs.readyMixEnabled ? readyMixCost : cementCost + sandCost + aggregateCost + otherCost;
-  const laborSubtotal = 0;
-  const total = materialSubtotal + laborSubtotal;
-  const mixerBatches = input.settings.mixerCapacityLiters > 0 ? (wetVolumeM3 * 1000 * wastageMultiplier) / input.settings.mixerCapacityLiters : 0;
-  const wheelbarrows =
-    input.settings.wheelbarrowCapacityLiters > 0 ? (wetVolumeM3 * 1000 * wastageMultiplier) / input.settings.wheelbarrowCapacityLiters : 0;
+  const total = input.costs.readyMixEnabled ? readyMixCost : cementCost + sandCost + aggregateCost + otherCost;
 
   return {
     wetVolumeM3,
@@ -70,13 +65,9 @@ export function calculateConcrete(input: CalculationInput): CalculationResult {
       aggregateCost,
       otherCost,
       readyMixCost,
-      materialSubtotal,
-      laborSubtotal,
       total,
       costPerM3: wetVolumeM3 > 0 ? total / wetVolumeM3 : 0
     },
-    mixerBatches,
-    wheelbarrows,
     warnings: buildWarnings(input, wetVolumeM3)
   };
 }

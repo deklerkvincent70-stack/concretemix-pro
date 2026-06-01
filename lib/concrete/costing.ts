@@ -13,5 +13,5 @@ export function getSelectedCementBagCost(input: CalculationInput) {
     if (namedCost > 0) return namedCost;
   }
 
-  return input.costs.cementPerBagByType[input.cementType] || input.costs.cementPerBag || 0;
+  return input.costs.cementPerBagByType[input.cementType] || (input.costs.cementPerBag ?? 0);
 }
