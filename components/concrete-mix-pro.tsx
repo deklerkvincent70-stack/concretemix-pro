@@ -559,22 +559,22 @@ export function ConcreteMixPro() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f2ea] text-[#101418] dark:bg-[#121412] dark:text-[#f7f5ed]">
-      <div className="mx-auto grid w-full max-w-7xl gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:gap-5 lg:pt-5">
-        <header className="sticky top-0 z-20 -mx-2 border-b border-black/10 bg-[#f4f2ea]/95 px-2 py-2 backdrop-blur dark:border-white/10 dark:bg-[#121412]/95 sm:-mx-5 sm:px-5 sm:py-3 lg:static lg:mx-0 lg:rounded-lg lg:border lg:px-5">
+    <main className="min-h-screen bg-[#f4f2ea] text-[#101418] dark:bg-[#121412] dark:text-[#f7f5ed] lg:bg-[#e7eaed] lg:dark:bg-[#101214]">
+      <div className="mx-auto grid w-full max-w-[1600px] gap-3 px-2 pb-20 pt-2 sm:gap-4 sm:px-5 sm:pb-24 sm:pt-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 lg:pt-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <header className="sticky top-0 z-20 -mx-2 border-b border-black/10 bg-[#f4f2ea]/95 px-2 py-2 backdrop-blur dark:border-white/10 dark:bg-[#121412]/95 sm:-mx-5 sm:px-5 sm:py-3 lg:static lg:col-span-2 lg:mx-0 lg:rounded-sm lg:border lg:border-[#b8c0c7] lg:bg-[#f8f9fb] lg:px-4 lg:py-3 lg:shadow-sm lg:dark:border-white/10 lg:dark:bg-[#171a1d]">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wide text-[#b8562f] sm:text-xs">Concrete Quantity, Mix and Cost Calculator, Material Order Creator and Progress Dashboard</p>
-              <h1 className="mt-0.5 text-xl font-black leading-tight sm:mt-1 sm:text-3xl">ConcreteMix Pro</h1>
+              <p className="hidden text-[10px] font-black uppercase tracking-wide text-[#b8562f] sm:block sm:text-xs">Concrete Quantity, Mix and Cost Calculator, Material Order Creator and Progress Dashboard</p>
+              <h1 className="mt-0.5 text-xl font-black leading-tight sm:mt-1 sm:text-3xl lg:text-2xl">ConcreteMix Pro</h1>
               <p className="mt-1 text-xs font-black sm:hidden">Project total: {currency}{formatMoney(projectActualCost)}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <div className="hidden rounded-md bg-[#101418] px-3 py-2 text-right text-white dark:bg-white dark:text-[#101418] sm:block">
+              <div className="hidden rounded-sm bg-[#101418] px-3 py-2 text-right text-white dark:bg-white dark:text-[#101418] sm:block lg:py-1.5">
                 <p className="text-[10px] font-black uppercase opacity-70">Project total</p>
                 <p className="text-lg font-black leading-tight">{currency}{formatMoney(projectActualCost)}</p>
               </div>
               <a
-                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
+                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12 lg:h-9 lg:w-9 lg:rounded-sm"
                 href="/help"
                 aria-label="Open help"
                 title="Help"
@@ -582,7 +582,7 @@ export function ConcreteMixPro() {
                 <HelpCircle size={22} />
               </a>
               <a
-                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
+                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12 lg:h-9 lg:w-9 lg:rounded-sm"
                 href="/privacy"
                 aria-label="Open privacy policy"
                 title="Privacy"
@@ -590,7 +590,7 @@ export function ConcreteMixPro() {
                 <ShieldCheck size={22} />
               </a>
               <button
-                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12"
+                className="grid h-10 w-10 place-items-center rounded-md border border-black/15 bg-white text-[#101418] shadow-sm dark:border-white/15 dark:bg-[#1d211e] dark:text-white sm:h-12 sm:w-12 lg:h-9 lg:w-9 lg:rounded-sm"
                 onClick={() => setSettings((next) => ({ ...next, theme: next.theme === 'dark' ? 'light' : 'dark' }))}
                 aria-label="Toggle theme"
               >
@@ -600,7 +600,7 @@ export function ConcreteMixPro() {
           </div>
         </header>
 
-        <div className="space-y-3 sm:space-y-4">
+        <div className="min-w-0 space-y-3 sm:space-y-4">
           <Panel title="Main Calculator" description="Type a project name and press Save first. Then add a location, save it, and enter the pour size. Calculations update instantly. Use Settings at the bottom for material, cost and global values.">
             <div className="grid grid-cols-[minmax(0,1fr)_82px] gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_90px] sm:gap-3">
               <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_44px] gap-2 sm:col-span-1">
@@ -763,7 +763,7 @@ export function ConcreteMixPro() {
                   </p>}
                   {!isCustomMix && !selectedMix.ratio && <p className="font-bold text-[#b8562f]">Uses a provisional 1 : 1 : 2 quantity estimate until a verified design mix is entered.</p>}
                 </div>
-                {!costs.readyMixEnabled && <button className="min-h-11 rounded-md bg-[#1f7a5a] px-4 font-black text-white" onClick={() => setManualMix((value) => !value)}>
+                {!costs.readyMixEnabled && <button className="min-h-11 rounded-md bg-[#1f7a5a] px-4 font-black text-white lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:px-3 lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:active:bg-[#cfd8de] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white lg:dark:hover:bg-[#30363c]" onClick={() => setManualMix((value) => !value)}>
                   {manualMix ? 'Done' : 'Edit ratio'}
                 </button>}
               </div>
@@ -788,7 +788,7 @@ export function ConcreteMixPro() {
                 </div>
               )}
               {isCustomMix && (
-                <button className="mt-3 min-h-11 w-full rounded-md bg-[#1f7a5a] px-4 font-black text-white active:bg-[#2f9f75]" onClick={saveCustomCurrent}>
+                <button className="mt-3 min-h-11 w-full rounded-md bg-[#1f7a5a] px-4 font-black text-white active:bg-[#2f9f75] lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:active:bg-[#cfd8de] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white lg:dark:hover:bg-[#30363c]" onClick={saveCustomCurrent}>
                   SAVE CUSTOM
                 </button>
               )}
@@ -831,6 +831,25 @@ export function ConcreteMixPro() {
             <p className="mt-3 text-sm font-semibold text-black/65 dark:text-white/70">Cost rates are set in Settings so they stay saved for the next calculation. Ready-mix mode prices delivered concrete by volume.</p>
           </Panel>
 
+          <Panel title="Current Pour">
+            <div className="grid grid-cols-2 gap-2 text-center text-sm font-bold sm:grid-cols-4">
+              <SummaryPill label="Wet volume" value={`${round(result.wetVolumeM3, 3)} m3`} />
+              <SummaryPill label="Dry volume" value={`${round(result.dryVolumeM3, 3)} m3`} />
+              <SummaryPill label="Strength" value={formatStrength(strengthMpa, settings.strengthUnit)} />
+              <SummaryPill label="Actual cost" value={`${currency}${formatMoney(result.costs.total)}`} />
+            </div>
+          </Panel>
+
+          {result.warnings.length > 0 && (
+            <Panel title="Warnings" action={<AlertTriangle size={20} className="text-[#b8562f]" />}>
+              <div className="space-y-2 text-sm font-semibold">
+                {result.warnings.map((warning) => (
+                  <p key={warning} className="rounded-md border border-[#b8562f]/30 bg-[#fff4ea] p-3 dark:bg-[#311f18] lg:rounded-sm lg:p-2">{warning}</p>
+                ))}
+              </div>
+            </Panel>
+          )}
+
           <Panel title="Progress & Order Status Dashboard" description="Select Material rows for the status section and amber order items for the shopping list section. Save and Share use those selections.">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_150px_150px]">
               <Select
@@ -854,22 +873,22 @@ export function ConcreteMixPro() {
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-black/65 dark:text-white/70">
                   <span>{pendingMaterialOrderLocations.length} locations with pending order items | {projectLocations.filter((location) => location.completedAt).length} poured</span>
                   <span className="flex gap-2">
-                    <button className="rounded-md bg-black/5 px-3 py-2 font-black text-[#1f7a5a] dark:bg-white/10" onClick={selectAllOrderLocations}>Select all</button>
-                    <button className="rounded-md bg-black/5 px-3 py-2 font-black text-[#b8562f] dark:bg-white/10" onClick={clearOrderLocations}>Clear</button>
+                    <button className="rounded-md bg-black/5 px-3 py-2 font-black text-[#1f7a5a] dark:bg-white/10 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:py-1.5 lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={selectAllOrderLocations}>Select all</button>
+                    <button className="rounded-md bg-black/5 px-3 py-2 font-black text-[#b8562f] dark:bg-white/10 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:py-1.5 lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={clearOrderLocations}>Clear</button>
                   </span>
                 </div>
                 <div className="mt-3 overflow-hidden rounded-md border border-black/10 bg-white text-sm font-semibold dark:border-white/10 dark:bg-[#121412]">
-                  <div className="hidden grid-cols-[74px_minmax(160px,1fr)_92px_96px_64px_68px_68px_68px_78px_68px_84px_150px] items-center gap-1.5 bg-black/5 px-3 py-2 text-[9.5px] font-black uppercase leading-tight text-black/55 dark:bg-white/10 dark:text-white/60 sm:grid">
+                  <div className="hidden grid-cols-[64px_minmax(180px,1fr)_88px_92px_56px_56px_56px_56px_70px_56px_84px_235px] items-center gap-2 bg-black/5 px-3 py-2 text-[9.5px] font-black uppercase leading-tight text-black/55 dark:bg-white/10 dark:text-white/60 sm:grid">
                     <span>Material</span>
                     <span>Location</span>
                     <span>Wet vol</span>
                           <span>Strength</span>
-                    <span>Mix</span>
-                    <span>CEMENT</span>
-                    <span>SAND</span>
-                    <span>STONE</span>
-                    <span>ADDITIVE</span>
-                    <span>Pour</span>
+                    <span className="text-center">Mix</span>
+                    <span className="text-center">CEMENT</span>
+                    <span className="text-center">SAND</span>
+                    <span className="text-center">STONE</span>
+                    <span className="text-center">ADDITIVE</span>
+                    <span className="text-center">Pour</span>
                     <span>Progress</span>
                     <span>Cost</span>
                   </div>
@@ -878,15 +897,16 @@ export function ConcreteMixPro() {
                       const selected = selectedOrderLocationIds.includes(location.id);
                       const progressPercent = location.progressPercent ?? (location.completedAt ? 100 : 0);
                       return (
-                        <div key={location.id} className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2 border-t border-black/10 px-3 py-2 dark:border-white/10 sm:grid-cols-[74px_minmax(160px,1fr)_92px_96px_64px_68px_68px_68px_78px_68px_84px_150px] sm:gap-1.5">
+                        <div key={location.id} className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2 border-t border-black/10 px-3 py-2 dark:border-white/10 sm:grid-cols-[64px_minmax(180px,1fr)_88px_92px_56px_56px_56px_56px_70px_56px_84px_235px] sm:gap-2">
                           <button
-                            className={`grid h-7 w-7 place-items-center rounded-full border-2 ${selected ? 'border-[#1f7a5a]' : 'border-black/25 dark:border-white/35'}`}
+                            className={`grid h-7 w-7 place-items-center rounded-full border-2 bg-white text-[#101418] dark:bg-[#121412] lg:h-4 lg:w-4 lg:rounded-none lg:border lg:bg-white lg:shadow-inner lg:dark:bg-[#171a1d] ${selected ? 'border-[#1f7a5a] lg:border-[#101418] lg:dark:border-white' : 'border-black/25 dark:border-white/35 lg:border-[#6f7b85]'}`}
                             type="button"
                             onClick={() => toggleOrderLocation(location.id)}
                             aria-label={selected ? `Remove ${location.name} from PDF` : `Include ${location.name} on PDF`}
                             title={selected ? 'Selected for PDF' : 'Not selected for PDF'}
                           >
-                            <span className={`h-3 w-3 rounded-full ${selected ? 'bg-[#1f7a5a]' : 'bg-transparent'}`} />
+                            <span className={`h-3 w-3 rounded-full lg:hidden ${selected ? 'bg-[#1f7a5a]' : 'bg-transparent'}`} />
+                            <span className={`hidden text-[13px] leading-none lg:block ${selected ? 'text-[#101418] dark:text-white' : 'text-transparent'}`}>✓</span>
                           </button>
                           <div className="min-w-0">
                             <p className="truncate font-black">{location.name}</p>
@@ -894,45 +914,49 @@ export function ConcreteMixPro() {
                           </div>
                           <span className="hidden truncate text-xs font-black sm:block">{formatDashboardVolume(locationResult, settings.unitSystem)}</span>
                           <span className="hidden truncate text-xs font-black sm:block">{formatStrength(location.input.strengthMpa, location.input.settings.strengthUnit)}</span>
-                          {location.input.costs.readyMixEnabled ? (
-                            <button
-                              className={`grid h-9 w-9 place-items-center rounded-full text-[10px] font-black text-white ${materialOrderStatusClass(getMaterialOrderStatus(location, 'readyMix'))}`}
-                              type="button"
-                              onClick={() => cycleMaterialOrderStatus(location.id, 'readyMix')}
-                              title={`PREMIX: ${materialOrderStatusLabel(getMaterialOrderStatus(location, 'readyMix'))}. Click to change.`}
+                          <div className="col-span-3 flex flex-wrap items-center gap-1.5 sm:contents">
+                            {location.input.costs.readyMixEnabled ? (
+                              <button
+                                className={`grid h-8 w-8 place-items-center rounded-full text-[9px] font-black text-white sm:h-9 sm:w-9 sm:text-[10px] lg:h-6 lg:w-6 lg:justify-self-center lg:text-[7px] ${materialOrderStatusClass(getMaterialOrderStatus(location, 'readyMix'))}`}
+                                type="button"
+                                onClick={() => cycleMaterialOrderStatus(location.id, 'readyMix')}
+                                title={`PREMIX: ${materialOrderStatusLabel(getMaterialOrderStatus(location, 'readyMix'))}. Click to change.`}
+                              >
+                                PRE
+                              </button>
+                            ) : (
+                              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#101418] text-[8px] font-black text-white dark:bg-white dark:text-[#101418] sm:h-9 sm:w-9 sm:text-[10px] lg:h-6 lg:w-6 lg:justify-self-center lg:text-[6px]">SITE</span>
+                            )}
+                            {materialOrderItems.map((item) => (
+                              <button
+                                key={item.id}
+                                className={`grid h-8 w-8 place-items-center rounded-full text-[9px] font-black text-white sm:h-9 sm:w-9 sm:text-[10px] lg:h-6 lg:w-6 lg:justify-self-center lg:text-[7px] ${location.input.costs.readyMixEnabled ? 'cursor-not-allowed bg-black/20 text-black/35 dark:bg-white/15 dark:text-white/35' : materialOrderStatusClass(getMaterialOrderStatus(location, item.id))}`}
+                                type="button"
+                                disabled={location.input.costs.readyMixEnabled}
+                                onClick={() => cycleMaterialOrderStatus(location.id, item.id)}
+                                aria-label={`${item.label} ${materialOrderStatusLabel(getMaterialOrderStatus(location, item.id))}`}
+                                title={location.input.costs.readyMixEnabled ? 'Premix location uses the PRE order status.' : `${item.label}: ${materialOrderStatusLabel(getMaterialOrderStatus(location, item.id))}. Click to change.`}
+                              >
+                                {materialOrderShortLabel(item.id)}
+                              </button>
+                            ))}
+                            <span
+                              className={`grid h-8 w-8 place-items-center rounded-full text-[10px] font-black text-white sm:h-9 sm:w-9 sm:text-[11px] lg:h-6 lg:w-6 lg:justify-self-center lg:text-[8px] ${pourProgressClass(progressPercent)}`}
+                              aria-label={`Pour progress ${progressPercent}%`}
+                              title={`Pour progress ${progressPercent}%`}
                             >
-                              PRE
-                            </button>
-                          ) : (
-                            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#101418] text-[10px] font-black text-white dark:bg-white dark:text-[#101418]">SITE</span>
-                          )}
-                          {materialOrderItems.map((item) => (
-                            <button
-                              key={item.id}
-                              className={`grid h-9 w-9 place-items-center rounded-full text-[10px] font-black text-white ${location.input.costs.readyMixEnabled ? 'cursor-not-allowed bg-black/20 text-black/35 dark:bg-white/15 dark:text-white/35' : materialOrderStatusClass(getMaterialOrderStatus(location, item.id))}`}
-                              type="button"
-                              disabled={location.input.costs.readyMixEnabled}
-                              onClick={() => cycleMaterialOrderStatus(location.id, item.id)}
-                              aria-label={`${item.label} ${materialOrderStatusLabel(getMaterialOrderStatus(location, item.id))}`}
-                              title={location.input.costs.readyMixEnabled ? 'Premix location uses the PRE order status.' : `${item.label}: ${materialOrderStatusLabel(getMaterialOrderStatus(location, item.id))}. Click to change.`}
-                            >
-                              {materialOrderShortLabel(item.id)}
-                            </button>
-                          ))}
-                          <span
-                            className={`grid h-9 w-9 place-items-center rounded-full text-[11px] font-black text-white ${pourProgressClass(progressPercent)}`}
-                            aria-label={`Pour progress ${progressPercent}%`}
-                            title={`Pour progress ${progressPercent}%`}
-                          >
-                            P
-                          </span>
-                          <NumberField
-                            label=""
-                            value={progressPercent}
-                            onChange={(value) => setLocationProgress(location.id, value)}
-                            suffix="%"
-                          />
-                          <span className="hidden truncate font-black sm:block">{currency}{formatMoney(locationResult.costs.total)}</span>
+                              P
+                            </span>
+                          </div>
+                          <div className="col-span-3 sm:col-span-1">
+                            <NumberField
+                              label=""
+                              value={progressPercent}
+                              onChange={(value) => setLocationProgress(location.id, value)}
+                              suffix="%"
+                            />
+                          </div>
+                          <span className="hidden truncate text-left font-black sm:block">{currency}{formatMoney(locationResult.costs.total)}</span>
                         </div>
                       );
                     })}
@@ -954,22 +978,12 @@ export function ConcreteMixPro() {
             </p>
           </Panel>
 
-          <Panel title="Settings" action={<button className="text-sm font-black text-[#1f7a5a]" onClick={() => setOpenSettings((value) => !value)}>{openSettings ? 'Hide' : 'Edit'}</button>}>
+          <Panel title="Settings" action={<button className="rounded-md px-2 py-1 text-sm font-black text-[#1f7a5a] lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-xs lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={() => setOpenSettings((value) => !value)}>{openSettings ? 'Hide' : 'Edit'}</button>}>
             {openSettings && <SettingsEditor settings={settings} setSettings={setSettings} setUnit={setUnit} costs={costs} setCosts={setCosts} currency={currency} onClearSelected={clearSelectedData} onBackupRestored={() => window.location.reload()} />}
           </Panel>
         </div>
 
-        <div className="space-y-3 sm:space-y-4">
-          {result.warnings.length > 0 && (
-            <Panel title="Warnings" action={<AlertTriangle size={20} className="text-[#b8562f]" />}>
-              <div className="space-y-2 text-sm font-semibold">
-                {result.warnings.map((warning) => (
-                  <p key={warning} className="rounded-md border border-[#b8562f]/30 bg-[#fff4ea] p-3 dark:bg-[#311f18]">{warning}</p>
-                ))}
-              </div>
-            </Panel>
-          )}
-        </div>
+        <div className="hidden lg:block" aria-hidden="true" />
       </div>
       {showUnsavedPrompt && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4">
@@ -979,9 +993,9 @@ export function ConcreteMixPro() {
               Do you want to save project "{projectName || 'Concrete project'}" before creating or loading another record?
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <button className="min-h-11 rounded-md border border-black/15 px-3 font-black dark:border-white/15" onClick={cancelPendingAction}>Cancel</button>
-              <button className="min-h-11 rounded-md bg-[#b8562f] px-3 font-black text-white" onClick={discardBeforeAction}>No</button>
-              <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 font-black text-white" onClick={confirmSaveBeforeAction}>Yes</button>
+              <button className="min-h-11 rounded-md border border-black/15 px-3 font-black dark:border-white/15 lg:min-h-8 lg:rounded-sm lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={cancelPendingAction}>Cancel</button>
+              <button className="min-h-11 rounded-md bg-[#b8562f] px-3 font-black text-white lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={discardBeforeAction}>No</button>
+              <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 font-black text-white lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-sm lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={confirmSaveBeforeAction}>Yes</button>
             </div>
           </div>
         </div>
@@ -1198,8 +1212,8 @@ function SettingsEditor({
             Export a backup on one device, move the JSON file by USB, email, WhatsApp or Quick Share, then import it on another device. No cloud account is used.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75]" onClick={exportBackup}>Export Backup</button>
-            <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75]" onClick={importBackup}>Import Backup</button>
+            <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-[13px] lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={exportBackup}>Export Backup</button>
+            <button className="min-h-11 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-[13px] lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white" onClick={importBackup}>Import Backup</button>
           </div>
         </div>
         <ClearCheck label="Saved projects" checked={clearOptions.projects} onChange={(value) => updateClearOption('projects', value)} />
@@ -1212,7 +1226,7 @@ function SettingsEditor({
         <div className="sm:col-span-2 rounded-md border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-[#121412]">
           <ClearCheck label="ALL" checked={allClearOptionsSelected} onChange={setAllClearOptions} />
           <button
-            className={`mt-3 min-h-11 w-full rounded-md px-4 font-black text-white ${anyClearOptionSelected ? 'bg-[#b8562f] active:bg-[#d46b3f]' : 'cursor-not-allowed bg-black/20 dark:bg-white/20'}`}
+            className={`mt-3 min-h-11 w-full rounded-md px-4 font-black text-white lg:min-h-8 lg:rounded-sm lg:border lg:px-3 lg:text-[13px] lg:shadow-sm ${anyClearOptionSelected ? 'bg-[#b8562f] active:bg-[#d46b3f] lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-[#101418] lg:hover:bg-[#dce3e8] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white' : 'cursor-not-allowed bg-black/20 dark:bg-white/20 lg:border-[#b8c0c7] lg:bg-[#edf0f2] lg:text-black/35 lg:dark:bg-white/10 lg:dark:text-white/35'}`}
             onClick={deleteSelectedData}
             disabled={!anyClearOptionSelected}
           >
@@ -1227,11 +1241,11 @@ function SettingsEditor({
 
 function Panel({ children, title, description, action, emphasis = false }: { children: ReactNode; title: string; description?: string; action?: ReactNode; emphasis?: boolean }) {
   return (
-    <section className={`rounded-lg border p-3 shadow-sm sm:p-4 ${emphasis ? 'border-[#1f7a5a] bg-[#e5efe6] dark:bg-[#18261f]' : 'border-black/10 bg-white dark:border-white/10 dark:bg-[#191d1a]'}`}>
-      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3">
+    <section className={`rounded-md border p-3 shadow-sm sm:p-4 lg:rounded-sm lg:p-3 lg:shadow-none ${emphasis ? 'border-[#1f7a5a] bg-[#e5efe6] dark:bg-[#18261f]' : 'border-black/10 bg-white dark:border-white/10 dark:bg-[#191d1a] lg:border-[#b8c0c7] lg:bg-[#fbfcfd] lg:dark:border-white/10 lg:dark:bg-[#171a1d]'}`}>
+      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3 lg:mb-2">
         <div>
-          <h2 className="text-base font-black leading-tight sm:text-lg">{title}</h2>
-          {description && <p className="mt-1 text-xs font-semibold leading-snug text-black/55 dark:text-white/60 sm:text-sm">{description}</p>}
+          <h2 className="text-base font-black leading-tight sm:text-lg lg:text-[15px] lg:uppercase lg:tracking-wide">{title}</h2>
+          {description && <p className="mt-1 hidden text-xs font-semibold leading-snug text-black/55 dark:text-white/60 sm:block sm:text-sm">{description}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
@@ -1254,9 +1268,9 @@ function SettingsGroup({ title, children, open = true, onToggle }: { title: stri
 
 function ClearCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <label className="flex min-h-11 items-center gap-3 rounded-md border border-black/10 bg-white px-3 text-sm font-black dark:border-white/10 dark:bg-[#121412]">
+    <label className="flex min-h-11 items-center gap-3 rounded-md border border-black/10 bg-white px-3 text-sm font-black dark:border-white/10 dark:bg-[#121412] lg:min-h-8 lg:rounded-sm lg:border-[#b8c0c7] lg:px-2 lg:text-[13px] lg:font-semibold">
       <input
-        className="h-5 w-5 accent-[#1f7a5a]"
+        className="h-5 w-5 accent-[#1f7a5a] lg:h-4 lg:w-4"
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
@@ -1267,7 +1281,7 @@ function ClearCheck({ label, checked, onChange }: { label: string; checked: bool
 }
 
 function Field({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
-  return <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<input className={`mt-1 h-11 w-full rounded-md border px-2.5 text-sm font-bold outline-none focus:border-[#1f7a5a] sm:h-12 sm:px-3 sm:text-base ${disabled ? 'border-black/10 bg-black/[0.04] text-black/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40' : 'border-black/15 bg-white text-[#101418] dark:border-white/15 dark:bg-[#121412] dark:text-white'}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} /></label>;
+  return <label className={`block text-xs font-bold sm:text-sm lg:text-xs lg:font-semibold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70 lg:text-[#1f2326]'}`}>{label}<input className={`mt-1 h-11 w-full rounded-md border px-2.5 text-sm font-bold outline-none focus:border-[#1f7a5a] sm:h-12 sm:px-3 sm:text-base lg:h-8 lg:rounded-none lg:px-2 lg:text-[13px] lg:font-semibold lg:shadow-inner ${disabled ? 'border-black/10 bg-black/[0.04] text-black/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40' : 'border-black/15 bg-white text-[#101418] dark:border-white/15 dark:bg-[#121412] dark:text-white lg:border-[#8f9aa3]'}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} /></label>;
 }
 
 function NumberField({ label, value, onChange, prefix = '', suffix = '', money = false, disabled = false }: { label: string; value: number; onChange: (value: number) => void; prefix?: string; suffix?: string; money?: boolean; disabled?: boolean }) {
@@ -1280,12 +1294,12 @@ function NumberField({ label, value, onChange, prefix = '', suffix = '', money =
   }, [focused, money, value]);
 
   return (
-    <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>
+    <label className={`block text-xs font-bold sm:text-sm lg:text-xs lg:font-semibold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70 lg:text-[#1f2326]'}`}>
       {label}
-      <span className={`mt-1 flex h-11 items-center rounded-md border px-2 focus-within:border-[#1f7a5a] sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}>
+      <span className={`mt-1 flex h-11 items-center rounded-md border px-2 focus-within:border-[#1f7a5a] sm:h-12 lg:h-8 lg:rounded-none lg:shadow-inner ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412] lg:border-[#8f9aa3]'}`}>
         {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
         <input
-          className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base"
+          className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base lg:text-[13px] lg:font-semibold"
           inputMode="decimal"
           value={draft}
           disabled={disabled}
@@ -1315,7 +1329,7 @@ function CompactField({ ariaLabel, value, onChange }: { ariaLabel: string; value
   return (
     <input
       aria-label={ariaLabel}
-      className="h-11 w-full rounded-md border border-black/15 bg-white px-2.5 text-sm font-bold text-[#101418] outline-none focus:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] dark:text-white sm:px-3 sm:text-base"
+      className="h-11 w-full rounded-md border border-black/15 bg-white px-2.5 text-sm font-bold text-[#101418] outline-none focus:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] dark:text-white sm:px-3 sm:text-base lg:h-8 lg:rounded-none lg:border-[#8f9aa3] lg:px-2 lg:text-[13px] lg:font-semibold lg:shadow-inner"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -1332,11 +1346,11 @@ function CompactNumberField({ ariaLabel, value, onChange, prefix = '', money = f
   }, [focused, money, value]);
 
   return (
-    <span className="flex h-11 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412]">
+    <span className="flex h-11 items-center rounded-md border border-black/15 bg-white px-2 focus-within:border-[#1f7a5a] dark:border-white/15 dark:bg-[#121412] lg:h-8 lg:rounded-none lg:border-[#8f9aa3] lg:shadow-inner">
       {prefix && <span className="pr-1 text-black/50 dark:text-white/60">{prefix}</span>}
       <input
         aria-label={ariaLabel}
-        className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base"
+        className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none dark:text-white sm:text-base lg:text-[13px] lg:font-semibold"
         inputMode="decimal"
         value={draft}
         onFocus={() => {
@@ -1360,15 +1374,15 @@ function CompactNumberField({ ariaLabel, value, onChange, prefix = '', money = f
 }
 
 function Select({ label, value, onChange, options, suffix = '', labels = {}, disabled = false }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; suffix?: string; labels?: Record<string, string>; disabled?: boolean }) {
-  return <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>{label}<span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}><select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
+  return <label className={`block text-xs font-bold sm:text-sm lg:text-xs lg:font-semibold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70 lg:text-[#1f2326]'}`}>{label}<span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 lg:h-8 lg:rounded-none lg:shadow-inner ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412] lg:border-[#8f9aa3]'}`}><select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base lg:text-[13px] lg:font-semibold" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}</select>{suffix && <span className="pl-1 text-black/50 dark:text-white/60">{suffix}</span>}</span></label>;
 }
 
 function CementTypeSelect({ label, value, onChange, options, disabled = false }: { label: string; value: string; onChange: (value: string) => void; options: string[]; disabled?: boolean }) {
   return (
-    <label className={`block text-xs font-bold sm:text-sm ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70'}`}>
+    <label className={`block text-xs font-bold sm:text-sm lg:text-xs lg:font-semibold ${disabled ? 'text-black/35 dark:text-white/35' : 'text-black/70 dark:text-white/70 lg:text-[#1f2326]'}`}>
       {label}
-      <span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412]'}`}>
-        <select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
+      <span className={`mt-1 flex h-11 items-center rounded-md border px-2 sm:h-12 lg:h-8 lg:rounded-none lg:shadow-inner ${disabled ? 'border-black/10 bg-black/[0.04] dark:border-white/10 dark:bg-white/[0.04]' : 'border-black/15 bg-white dark:border-white/15 dark:bg-[#121412] lg:border-[#8f9aa3]'}`}>
+        <select className="w-full bg-transparent text-sm font-bold text-[#101418] outline-none disabled:text-black/40 dark:text-white dark:disabled:text-white/40 sm:text-base lg:text-[13px] lg:font-semibold" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
           {options.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       </span>
@@ -1457,11 +1471,11 @@ function isSavedCustomCement(name: string) {
 }
 
 function Metric({ label, value, unit, sub, strong = false }: { label: string; value: number; unit: string; sub: string; strong?: boolean }) {
-  return <div className="min-w-0 rounded-md border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#121412] sm:p-3"><p className="truncate text-[11px] font-bold uppercase text-black/55 dark:text-white/55 sm:text-xs">{label}</p><p className={`${strong ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} truncate font-black leading-tight`}>{value}<span className="ml-1 text-xs sm:text-sm">{unit}</span></p><p className="truncate text-[11px] font-bold text-black/55 dark:text-white/55 sm:text-xs">{sub}</p></div>;
+  return <div className="min-w-0 rounded-md border border-black/10 bg-white p-2 dark:border-white/10 dark:bg-[#121412] sm:p-3 lg:rounded-sm lg:border-[#b8c0c7] lg:p-2"><p className="truncate text-[11px] font-bold uppercase text-black/55 dark:text-white/55 sm:text-xs lg:text-[10px]">{label}</p><p className={`${strong ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} truncate font-black leading-tight lg:text-lg`}>{value}<span className="ml-1 text-xs sm:text-sm">{unit}</span></p><p className="truncate text-[11px] font-bold text-black/55 dark:text-white/55 sm:text-xs lg:text-[10px]">{sub}</p></div>;
 }
 
 function SummaryPill({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-md bg-black/5 p-2 dark:bg-white/10"><p className="text-[11px] text-black/55 dark:text-white/60 sm:text-xs">{label}</p><p className="truncate text-sm font-black sm:text-base">{value}</p></div>;
+  return <div className="rounded-md bg-black/5 p-2 dark:bg-white/10 lg:rounded-sm lg:border lg:border-[#c5ccd2] lg:bg-white lg:dark:border-white/10 lg:dark:bg-[#101214]"><p className="text-[11px] text-black/55 dark:text-white/60 sm:text-xs lg:text-[10px] lg:uppercase">{label}</p><p className="truncate text-sm font-black sm:text-base lg:text-sm">{value}</p></div>;
 }
 
 function Badge({ children }: { children: ReactNode }) {
@@ -1469,13 +1483,13 @@ function Badge({ children }: { children: ReactNode }) {
 }
 
 function Action({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
-  return <button className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] sm:min-h-12 sm:text-base" onClick={onClick}>{icon}{label}</button>;
+  return <button className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#1f7a5a] px-3 text-sm font-black text-white active:bg-[#2f9f75] sm:min-h-12 sm:text-base lg:min-h-8 lg:rounded-sm lg:border lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-[#101418] lg:shadow-sm lg:hover:bg-[#dce3e8] lg:active:bg-[#cfd8de] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white lg:dark:hover:bg-[#30363c]" onClick={onClick}>{icon}{label}</button>;
 }
 
 function MiniButton({ children, label, onClick, disabled = false, compact = false }: { children: ReactNode; label: string; onClick: () => void; disabled?: boolean; compact?: boolean }) {
   return (
     <button
-      className={`${compact ? 'h-10 sm:h-11' : 'mt-5 h-11 sm:mt-6 sm:h-12'} rounded-md border px-2 text-xs font-black ${disabled ? 'cursor-not-allowed border-black/10 bg-black/[0.04] text-black/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30' : 'border-[#b8562f]/40 bg-[#fff4ea] text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91]'}`}
+      className={`${compact ? 'h-10 sm:h-11 lg:h-8' : 'mt-5 h-11 sm:mt-6 sm:h-12 lg:mt-5 lg:h-8'} rounded-md border px-2 text-xs font-black lg:rounded-sm lg:font-semibold lg:shadow-sm ${disabled ? 'cursor-not-allowed border-black/10 bg-black/[0.04] text-black/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30' : 'border-[#b8562f]/40 bg-[#fff4ea] text-[#8a3b1d] active:bg-[#ffe5d1] dark:bg-[#311f18] dark:text-[#ffbd91] lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-[#101418] lg:hover:bg-[#dce3e8] lg:active:bg-[#cfd8de] lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white lg:dark:hover:bg-[#30363c]'}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
@@ -1485,3 +1499,6 @@ function MiniButton({ children, label, onClick, disabled = false, compact = fals
     </button>
   );
 }
+
+
+

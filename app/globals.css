@@ -31,6 +31,27 @@ select {
   font: inherit;
 }
 
+@media (min-width: 1024px) {
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  button,
+  input,
+  select {
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  input[type="checkbox"] {
+    border-radius: 0;
+  }
+
+  .font-black,
+  .font-bold {
+    font-weight: 600;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
