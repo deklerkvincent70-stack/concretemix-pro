@@ -1479,7 +1479,7 @@ function SummaryPill({ label, value }: { label: string; value: string }) {
 }
 
 function Badge({ children }: { children: ReactNode }) {
-  return <p className="rounded-md bg-[#b8562f] px-3 py-1 text-sm font-black text-white">{children}</p>;
+  return <p className="rounded-md border border-black/10 bg-black/5 px-3 py-1 text-sm font-black text-[#101418] dark:border-white/10 dark:bg-white/10 dark:text-white lg:rounded-sm lg:border-[#6f7b85] lg:bg-[#e9edf0] lg:text-[#101418] lg:shadow-sm lg:dark:border-white/20 lg:dark:bg-[#252a2f] lg:dark:text-white">{children}</p>;
 }
 
 function Action({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
@@ -1499,6 +1499,7 @@ function MiniButton({ children, label, onClick, disabled = false, compact = fals
     </button>
   );
 }
+
 
 
 
